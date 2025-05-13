@@ -1,6 +1,6 @@
 {
   "name": "@kne/axios-fetch",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "一个axios的简单封装，支持loader和url params，和@kne/react-fetch保持统一",
   "syntax": {
     "esmodules": true
