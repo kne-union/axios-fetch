@@ -1,0 +1,21 @@
+{
+  "isFull": false,
+  "list": [
+    {
+      "title": "这里填写示例标题",
+      "description": "这里填写示例说明",
+      "code": "./base.js",
+      "scope": [
+        {
+          "name": "_AxiosFetch",
+          "packageName": "@kne/current-lib_axios-fetch",
+          "importStatement": "import * as _AxiosFetch from \"@kne/axios-fetch\""
+        },
+        {
+          "name": "antd",
+          "packageName": "antd"
+        }
+      ]
+    }
+  ]
+}
