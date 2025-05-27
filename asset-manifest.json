@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.js": "/axios-fetch/static/js/main.7ad9489a.js",
-    "axios_fetch_1_0_1.js": "/axios-fetch/remoteEntry.js",
+    "main.js": "/axios-fetch/static/js/main.13444a66.js",
+    "axios_fetch_1_0_2.js": "/axios-fetch/remoteEntry.js",
     "static/css/161.b3527b50.chunk.css": "/axios-fetch/static/css/161.b3527b50.chunk.css",
-    "static/js/161.ec88fee5.chunk.js": "/axios-fetch/static/js/161.ec88fee5.chunk.js",
-    "static/js/830.35275e95.chunk.js": "/axios-fetch/static/js/830.35275e95.chunk.js",
+    "static/js/161.563d3bb0.chunk.js": "/axios-fetch/static/js/161.563d3bb0.chunk.js",
+    "static/js/830.1fec9aad.chunk.js": "/axios-fetch/static/js/830.1fec9aad.chunk.js",
     "static/js/488.21a74ff7.chunk.js": "/axios-fetch/static/js/488.21a74ff7.chunk.js",
     "static/js/467.f3a43679.chunk.js": "/axios-fetch/static/js/467.f3a43679.chunk.js",
     "static/js/182.fe26ee7f.chunk.js": "/axios-fetch/static/js/182.fe26ee7f.chunk.js",
     "static/js/446.f1f5954f.chunk.js": "/axios-fetch/static/js/446.f1f5954f.chunk.js",
     "static/js/233.3d96a6cc.chunk.js": "/axios-fetch/static/js/233.3d96a6cc.chunk.js",
-    "static/js/690.1238f339.chunk.js": "/axios-fetch/static/js/690.1238f339.chunk.js",
+    "static/js/690.067e18df.chunk.js": "/axios-fetch/static/js/690.067e18df.chunk.js",
     "static/js/201.9ddf66a5.chunk.js": "/axios-fetch/static/js/201.9ddf66a5.chunk.js",
     "static/js/705.d7362117.chunk.js": "/axios-fetch/static/js/705.d7362117.chunk.js",
     "static/js/848.14060a9e.chunk.js": "/axios-fetch/static/js/848.14060a9e.chunk.js",
@@ -19,17 +19,17 @@
     "static/js/346.db40ffc6.chunk.js": "/axios-fetch/static/js/346.db40ffc6.chunk.js",
     "static/js/961.b22e59bc.chunk.js": "/axios-fetch/static/js/961.b22e59bc.chunk.js",
     "index.html": "/axios-fetch/index.html",
-    "main.7ad9489a.js.map": "/axios-fetch/static/js/main.7ad9489a.js.map",
+    "main.13444a66.js.map": "/axios-fetch/static/js/main.13444a66.js.map",
     "remoteEntry.js.map": "/axios-fetch/remoteEntry.js.map",
     "161.b3527b50.chunk.css.map": "/axios-fetch/static/css/161.b3527b50.chunk.css.map",
-    "161.ec88fee5.chunk.js.map": "/axios-fetch/static/js/161.ec88fee5.chunk.js.map",
-    "830.35275e95.chunk.js.map": "/axios-fetch/static/js/830.35275e95.chunk.js.map",
+    "161.563d3bb0.chunk.js.map": "/axios-fetch/static/js/161.563d3bb0.chunk.js.map",
+    "830.1fec9aad.chunk.js.map": "/axios-fetch/static/js/830.1fec9aad.chunk.js.map",
     "488.21a74ff7.chunk.js.map": "/axios-fetch/static/js/488.21a74ff7.chunk.js.map",
     "467.f3a43679.chunk.js.map": "/axios-fetch/static/js/467.f3a43679.chunk.js.map",
     "182.fe26ee7f.chunk.js.map": "/axios-fetch/static/js/182.fe26ee7f.chunk.js.map",
     "446.f1f5954f.chunk.js.map": "/axios-fetch/static/js/446.f1f5954f.chunk.js.map",
     "233.3d96a6cc.chunk.js.map": "/axios-fetch/static/js/233.3d96a6cc.chunk.js.map",
-    "690.1238f339.chunk.js.map": "/axios-fetch/static/js/690.1238f339.chunk.js.map",
+    "690.067e18df.chunk.js.map": "/axios-fetch/static/js/690.067e18df.chunk.js.map",
     "201.9ddf66a5.chunk.js.map": "/axios-fetch/static/js/201.9ddf66a5.chunk.js.map",
     "705.d7362117.chunk.js.map": "/axios-fetch/static/js/705.d7362117.chunk.js.map",
     "848.14060a9e.chunk.js.map": "/axios-fetch/static/js/848.14060a9e.chunk.js.map",
@@ -39,6 +39,6 @@
     "961.b22e59bc.chunk.js.map": "/axios-fetch/static/js/961.b22e59bc.chunk.js.map"
   },
   "entrypoints": [
-    "static/js/main.7ad9489a.js"
+    "static/js/main.13444a66.js"
   ]
 }
