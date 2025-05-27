@@ -34,7 +34,7 @@ const createAjax = options => {
   const instance = axios.create(axiosOptions);
 
   instance.interceptors.request.use(async config => {
-    config.headers = Object.assign({}, config.headers, getDefaultHeaders());
+    config.headers = Object.assign({}, getDefaultHeaders(), config.headers);
     if (config.method.toUpperCase() !== 'GET' && !config.headers['Content-Type']) {
       config.headers['Content-Type'] = 'application/json';
     }
