@@ -10,32 +10,31 @@ export const parseUrlParams = params => {
 };
 
 const createAjax = options => {
-  const { errorHandler, registerInterceptors, getDefaultHeaders, defaultError, showResponseError, getResponseError, ...axiosOptions } = Object.assign(
-    {},
-    {
-      baseUrl: '',
-      getDefaultHeaders: () => ({}),
-      defaultError: '请求发生错误',
-      showResponseError: response => {
-        return response.status !== 200 || (Object.hasOwn(response.data, 'code') && response.data.code !== 0 && response.config.showError !== false);
-      },
-      getResponseError: response => {
-        return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
-      },
-      errorHandler: () => {},
-      validateStatus: function () {
-        return true;
-      },
-      registerInterceptors: () => {}
-    },
-    options
-  );
+  const {
+    errorHandler,
+    registerInterceptors,
+    getDefaultHeaders,
+    defaultError,
+    showResponseError,
+    getResponseError,
+    ...axiosOptions
+  } = Object.assign({}, {
+    baseUrl: '', getDefaultHeaders: () => ({}), defaultError: '请求发生错误', showResponseError: response => {
+      return response.status !== 200 || (Object.hasOwn(response.data, 'code') && response.data.code !== 0 && response.config.showError !== false);
+    }, getResponseError: response => {
+      return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
+    }, errorHandler: () => {
+    }, validateStatus: function() {
+      return true;
+    }, registerInterceptors: () => {
+    }
+  }, options);
 
   const baseUrl = axiosOptions.baseUrl;
   const instance = axios.create(axiosOptions);
 
   instance.interceptors.request.use(async config => {
-    config.headers = Object.assign({}, getDefaultHeaders());
+    config.headers = Object.assign({}, config.headers, getDefaultHeaders());
     if (config.method.toUpperCase() !== 'GET' && !config.headers['Content-Type']) {
       config.headers['Content-Type'] = 'application/json';
     }
@@ -43,18 +42,15 @@ const createAjax = options => {
     return config;
   });
 
-  instance.interceptors.response.use(
-    response => {
-      if (showResponseError(response)) {
-        errorHandler(getResponseError(response) || defaultError);
-      }
-      return response;
-    },
-    error => {
-      errorHandler(error.message || defaultError);
-      return Promise.reject(error);
+  instance.interceptors.response.use(response => {
+    if (showResponseError(response)) {
+      errorHandler(getResponseError(response) || defaultError);
     }
-  );
+    return response;
+  }, error => {
+    errorHandler(error.message || defaultError);
+    return Promise.reject(error);
+  });
 
   typeof registerInterceptors === 'function' && registerInterceptors(instance.interceptors);
 
@@ -63,8 +59,7 @@ const createAjax = options => {
       return Promise.resolve(params.loader(omit(params, ['loader'])))
         .then(data => ({
           data: {
-            code: 0,
-            data
+            code: 0, data
           }
         }))
         .catch(err => {
