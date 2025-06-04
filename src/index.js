@@ -19,7 +19,7 @@ const createAjax = options => {
     getResponseError,
     ...axiosOptions
   } = Object.assign({}, {
-    baseUrl: '', getDefaultHeaders: () => ({}), defaultError: '请求发生错误', showResponseError: response => {
+    baseURL: '', getDefaultHeaders: () => ({}), defaultError: '请求发生错误', showResponseError: response => {
       return response.status !== 200 || (Object.hasOwn(response.data, 'code') && response.data.code !== 0 && response.config.showError !== false);
     }, getResponseError: response => {
       return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
@@ -30,8 +30,8 @@ const createAjax = options => {
     }
   }, options);
 
-  const baseUrl = axiosOptions.baseUrl;
-  const instance = axios.create(axiosOptions);
+  const baseURL = axiosOptions.baseURL || axiosOptions.baseUrl || '';
+  const instance = axios.create(Object.assign({}, axiosOptions, { baseURL }));
 
   instance.interceptors.request.use(async config => {
     config.headers = Object.assign({}, getDefaultHeaders(), config.headers);
@@ -78,7 +78,7 @@ const createAjax = options => {
 
     const queryString = searchParams.toString();
 
-    return axios.postForm(`${baseUrl}${url}${queryString ? '?' + queryString : ''}`, data, Object.assign({}, { headers: getDefaultHeaders() }, options));
+    return axios.postForm(`${baseURL}${url}${queryString ? '?' + queryString : ''}`, data, Object.assign({}, { headers: getDefaultHeaders() }, options));
   };
   ajax.baseUrl = baseUrl;
 
