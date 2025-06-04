@@ -80,7 +80,7 @@ const createAjax = options => {
 
     return axios.postForm(`${baseURL}${url}${queryString ? '?' + queryString : ''}`, data, Object.assign({}, { headers: getDefaultHeaders() }, options));
   };
-  ajax.baseUrl = baseUrl;
+  ajax.baseURL = ajax.baseUrl = baseURL;
 
   return ajax;
 };
