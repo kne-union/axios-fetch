@@ -10,25 +10,26 @@ export const parseUrlParams = params => {
 };
 
 const createAjax = options => {
-  const {
-    errorHandler,
-    registerInterceptors,
-    getDefaultHeaders,
-    defaultError,
-    showResponseError,
-    getResponseError,
-    ...axiosOptions
-  } = Object.assign({}, {
-    baseURL: '', getDefaultHeaders: () => ({}), defaultError: '请求发生错误', showResponseError: response => {
-      return response.status !== 200 || (Object.hasOwn(response.data, 'code') && response.data.code !== 0 && response.config.showError !== false);
-    }, getResponseError: response => {
-      return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
-    }, errorHandler: () => {
-    }, validateStatus: function() {
-      return true;
-    }, registerInterceptors: () => {
-    }
-  }, options);
+  const { errorHandler, registerInterceptors, getDefaultHeaders, defaultError, showResponseError, getResponseError, ...axiosOptions } = Object.assign(
+    {},
+    {
+      baseURL: '',
+      getDefaultHeaders: () => ({}),
+      defaultError: '请求发生错误',
+      showResponseError: response => {
+        return response.status !== 200 || (Object.hasOwn(response.data, 'code') && response.data.code !== 0 && response.config.showError !== false);
+      },
+      getResponseError: response => {
+        return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
+      },
+      errorHandler: () => {},
+      validateStatus: function () {
+        return true;
+      },
+      registerInterceptors: () => {}
+    },
+    options
+  );
 
   const baseURL = axiosOptions.baseURL || axiosOptions.baseUrl || '';
   const instance = axios.create(Object.assign({}, axiosOptions, { baseURL }));
@@ -44,22 +45,26 @@ const createAjax = options => {
     return config;
   });
 
-  instance.interceptors.response.use(response => {
-    if (showResponseError(response)) {
-      errorHandler(getResponseError(response) || defaultError);
+  instance.interceptors.response.use(
+    response => {
+      if (showResponseError(response)) {
+        errorHandler(getResponseError(response) || defaultError);
+      }
+      return response;
+    },
+    error => {
+      errorHandler(error.message || defaultError);
+      return Promise.reject(error);
     }
-    return response;
-  }, error => {
-    errorHandler(error.message || defaultError);
-    return Promise.reject(error);
-  });
+  );
 
   const ajax = params => {
     if (params.hasOwnProperty('loader') && typeof params.loader === 'function') {
       return Promise.resolve(params.loader(omit(params, ['loader'])))
         .then(data => ({
           data: {
-            code: 0, data
+            code: 0,
+            data
           }
         }))
         .catch(err => {
@@ -77,8 +82,7 @@ const createAjax = options => {
     const searchParams = new URLSearchParams(params);
 
     const queryString = searchParams.toString();
-
-    return axios.postForm(`${baseURL}${url}${queryString ? '?' + queryString : ''}`, data, Object.assign({}, { headers: getDefaultHeaders() }, options));
+    return instance.postForm(`${url}${queryString ? '?' + queryString : ''}`, data, Object.assign({}, options));
   };
   ajax.baseURL = ajax.baseUrl = baseURL;
   ajax.parseUrlParams = parseUrlParams;
