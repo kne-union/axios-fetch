@@ -1,14 +1,74 @@
-| 方法/属性 | 类型 | 描述 | 参数 | 返回值 | 示例 |
-|----------|------|------|------|--------|------|
-| **ajax(config)** | `Function` | 基础请求方法 | `config: Object`:<br>- `url?: String`<br>- `method?: String`<br>- `params?: Object`<br>- `loader?: Function` | `Promise<{data: {code: number, data: any, msg?: string}}>` | ```js<br>ajax({<br>  url: '/api',<br>  method: 'get'<br>})<br>``` |
-| **ajax.postForm(config)** | `Function` | 表单提交方法 | `config: Object`:<br>- `url: String`<br>- `params?: Object`<br>- `data: Object` | `Promise<AxiosResponse>` | ```js<br>ajax.postForm({<br>  url: '/submit',<br>  data: {key: 'value'}<br>})<br>``` |
+### createAjax(options)
 
-## Config 参数详情
+创建一个 axios 实例的封装。
 
-| 参数 | 类型 | 必填 | 描述 | 适用方法 |
-|------|------|------|------|----------|
-| `url` | `String` | 是* | 请求地址（*loader方式可选） | 全部 |
-| `method` | `String` | 否 | HTTP 方法 | ajax() |
-| `params` | `Object` | 否 | URL 查询参数 | 全部 |
-| `data` | `Object` | 是 | 请求体数据 | postForm() |
-| `loader` | `Function` | 否 | 数据预处理函数 | ajax() |
+#### 参数
+
+- `options`: Object
+  - `baseURL`: String - API 的基础 URL
+  - `errorHandler`: Function - 错误处理函数
+  - `registerInterceptors`: Function - 注册拦截器的函数
+  - `getDefaultHeaders`: Function - 获取默认请求头的函数
+  - `defaultError`: String - 默认错误信息
+  - `showResponseError`: Function - 判断是否显示响应错误的函数
+  - `getResponseError`: Function - 获取响应错误信息的函数
+  - `...axiosOptions` - 其他 axios 配置选项
+
+#### 返回值
+
+返回一个封装后的 ajax 函数，具有以下特性：
+
+- `ajax(params)`: 发送请求的主函数
+  - `params.loader`: Function - 可选的数据加载函数
+  - `params.urlParams`: Object - URL 参数对象
+  - `params.url`: String - 请求 URL
+  - 其他 axios 请求配置
+
+- `ajax.postForm(config)`: 发送表单数据的便捷方法
+  - `config.url`: String - 请求 URL
+  - `config.params`: Object - 查询参数
+  - `config.data`: Object - 表单数据
+  - `config.urlParams`: Object - URL 参数对象
+  - 其他 axios 请求配置
+
+- `ajax.baseURL`: String - 基础 URL
+- `ajax.parseUrlParams`: Function - URL 参数解析函数
+
+### URL 参数替换
+
+支持在 URL 中使用 `{paramName}` 语法，这些参数将被 `urlParams` 对象中的对应值替换：
+
+```javascript
+ajax({
+  url: '/users/{userId}/posts/{postId}',
+  urlParams: {
+    userId: '123',
+    postId: '456'
+  }
+});
+// 将请求 /users/123/posts/456
+```
+
+### Loader 功能
+
+支持使用 loader 函数来模拟请求：
+
+```javascript
+ajax({
+  loader: () => {
+    return new Promise((resolve) => {
+      resolve({ name: 'John' });
+    });
+  }
+});
+// 返回 { data: { code: 0, data: { name: 'John' } } }
+```
+
+### 错误处理
+
+默认的错误处理逻辑：
+- 非 200 状态码
+- 响应数据中 code 不为 0
+- 请求发生错误
+
+可以通过 `showResponseError` 和 `getResponseError` 选项自定义错误处理逻辑。
