@@ -1,26 +1,3 @@
-# @kne/axios-fetch API 文档
-
-## 安装
-
-```bash
-npm install @kne/axios-fetch axios
-```
-
-## 基本用法
-
-```javascript
-import createAjax from '@kne/axios-fetch';
-
-const ajax = createAjax({
-  baseURL: 'https://api.example.com',
-  errorHandler: (error) => {
-    console.error(error);
-  }
-});
-```
-
-## API 参考
-
 ### createAjax(options)
 
 创建一个 axios 实例的封装。
