@@ -33,6 +33,8 @@ const createAjax = options => {
   const baseURL = axiosOptions.baseURL || axiosOptions.baseUrl || '';
   const instance = axios.create(Object.assign({}, axiosOptions, { baseURL }));
 
+  typeof registerInterceptors === 'function' && registerInterceptors(instance.interceptors);
+
   instance.interceptors.request.use(async config => {
     config.headers = Object.assign({}, getDefaultHeaders(), config.headers);
     if (config.method.toUpperCase() !== 'GET' && !config.headers['Content-Type']) {
@@ -51,8 +53,6 @@ const createAjax = options => {
     errorHandler(error.message || defaultError);
     return Promise.reject(error);
   });
-
-  typeof registerInterceptors === 'function' && registerInterceptors(instance.interceptors);
 
   const ajax = params => {
     if (params.hasOwnProperty('loader') && typeof params.loader === 'function') {
