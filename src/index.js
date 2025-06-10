@@ -17,7 +17,10 @@ const createAjax = options => {
       getDefaultHeaders: () => ({}),
       defaultError: '请求发生错误',
       showResponseError: response => {
-        return response.status !== 200 || (Object.hasOwn(response.data, 'code') && response.data.code !== 0 && response.config.showError !== false);
+        if (response.config.showError === false) {
+          return false;
+        }
+        return !(response.status >= 200 && response.status < 300) || (Object.hasOwn(response.data, 'code') && response.data.code !== 0);
       },
       getResponseError: response => {
         return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
