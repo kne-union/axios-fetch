@@ -1,6 +1,6 @@
 {
   "name": "@kne/axios-fetch",
-  "version": "1.0.8",
+  "version": "1.1.0-alpha.0",
   "description": "一个axios的简单封装，支持loader和url params，和@kne/react-fetch保持统一",
   "syntax": {
     "esmodules": true
@@ -81,5 +81,8 @@
     "prettier": "^3.2.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
+  },
+  "dependencies": {
+    "object-hash": "^3.0.0"
   }
 }
