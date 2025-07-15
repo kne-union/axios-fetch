@@ -1,5 +1,7 @@
 import axios from 'axios';
 import omit from 'lodash/omit';
+import Cache from './Cache';
+import getRequestToken from './getRequestToken';
 
 export const parseUrlParams = params => {
   if (typeof params.urlParams === 'object' && Object.keys(params.urlParams).length > 0 && typeof params.url === 'string') {
@@ -10,7 +12,7 @@ export const parseUrlParams = params => {
 };
 
 const createAjax = options => {
-  const { errorHandler, registerInterceptors, getDefaultHeaders, defaultError, showResponseError, getResponseError, ...axiosOptions } = Object.assign(
+  const { cache, errorHandler, registerInterceptors, getDefaultHeaders, defaultError, showResponseError, getResponseError, ...axiosOptions } = Object.assign(
     {},
     {
       baseURL: '',
@@ -33,6 +35,8 @@ const createAjax = options => {
     },
     options
   );
+
+  const cacheInstance = new Cache(Object.assign({}, { ttl: 1000 * 60 * 10, maxLength: 1000, isLocal: false }, cache));
 
   const baseURL = axiosOptions.baseURL || axiosOptions.baseUrl || '';
   const instance = axios.create(Object.assign({}, axiosOptions, { baseURL }));
@@ -61,22 +65,49 @@ const createAjax = options => {
     }
   );
 
-  const ajax = params => {
-    if (params.hasOwnProperty('loader') && typeof params.loader === 'function') {
-      return Promise.resolve(params.loader(omit(params, ['loader'])))
-        .then(data => ({
-          data: {
-            code: 0,
-            data
-          }
-        }))
-        .catch(err => {
-          errorHandler(err.message || defaultError);
-          return { data: { code: 500, msg: err.message } };
+  const ajax = ({ cache, cacheOptions = {}, force, ...params }) => {
+    let requestToken, cacheKey;
+    if (cache) {
+      requestToken = getRequestToken(params);
+      cacheKey = (cache === true ? '' : cache) + requestToken;
+      const cacheData = cacheInstance.get(cacheKey);
+      if (!force && cacheData) {
+        return Promise.resolve(cacheData);
+      }
+    }
+
+    const recordCache = promise => {
+      if (!cache) {
+        return promise;
+      }
+      if (cacheOptions.isLocal) {
+        promise.then(data => {
+          cacheInstance.put(cacheKey, data, cacheOptions);
+          return data;
         });
+      } else {
+        cacheInstance.put(cacheKey, promise, cacheOptions);
+      }
+      return promise;
+    };
+
+    if (params.hasOwnProperty('loader') && typeof params.loader === 'function') {
+      return recordCache(
+        Promise.resolve(params.loader(omit(params, ['loader'])))
+          .then(data => ({
+            data: {
+              code: 0,
+              data
+            }
+          }))
+          .catch(err => {
+            errorHandler(err.message || defaultError);
+            return { data: { code: 500, msg: err.message } };
+          })
+      );
     }
     parseUrlParams(params);
-    return instance(params);
+    return recordCache(instance(params));
   };
 
   ajax.postForm = config => {
