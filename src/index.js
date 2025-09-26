@@ -120,6 +120,7 @@ const createAjax = options => {
   };
   ajax.baseURL = ajax.baseUrl = baseURL;
   ajax.parseUrlParams = parseUrlParams;
+  ajax.getDefaultHeaders = getDefaultHeaders;
   return ajax;
 };
 
