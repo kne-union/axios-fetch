@@ -12,34 +12,34 @@ export const parseUrlParams = params => {
 };
 
 const createAjax = options => {
-  const { cache, errorHandler, registerInterceptors, getDefaultHeaders, defaultError, showResponseError, getResponseError, ...axiosOptions } = Object.assign(
-    {},
-    {
-      baseURL: '',
-      getDefaultHeaders: () => ({}),
-      defaultError: '请求发生错误',
-      showResponseError: response => {
-        if (response.config.showError === false) {
-          return false;
-        }
-        return !(response.status >= 200 && response.status < 300) || (Object.hasOwn(response.data, 'code') && response.data.code !== 0);
-      },
-      getResponseError: response => {
-        return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
-      },
-      errorHandler: () => {},
-      validateStatus: function () {
-        return true;
-      },
-      registerInterceptors: () => {}
-    },
-    options
-  );
+  const {
+    cache,
+    errorHandler,
+    registerInterceptors,
+    getDefaultHeaders,
+    defaultError,
+    showResponseError,
+    getResponseError,
+    ...axiosOptions
+  } = Object.assign({}, {
+    baseURL: '', getDefaultHeaders: () => ({}), defaultError: '请求发生错误', showResponseError: response => {
+      if (response.config.showError === false) {
+        return false;
+      }
+      return !(response.status >= 200 && response.status < 300) || (Object.hasOwn(response.data, 'code') && response.data.code !== 0);
+    }, getResponseError: response => {
+      return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
+    }, errorHandler: () => {
+    }, validateStatus: function() {
+      return true;
+    }, registerInterceptors: () => {
+    }
+  }, options);
 
   const cacheInstance = new Cache(Object.assign({}, { ttl: 1000 * 60 * 10, maxLength: 1000, isLocal: false }, cache));
 
   const baseURL = axiosOptions.baseURL || axiosOptions.baseUrl || '';
-  const instance = axios.create(Object.assign({}, axiosOptions, { baseURL }));
+  const instance = axios.create(omit(Object.assign({}, axiosOptions, { baseURL }), ['baseUrl']));
 
   typeof registerInterceptors === 'function' && registerInterceptors(instance.interceptors);
 
@@ -52,18 +52,15 @@ const createAjax = options => {
     return config;
   });
 
-  instance.interceptors.response.use(
-    response => {
-      if (showResponseError(response)) {
-        errorHandler(getResponseError(response) || defaultError);
-      }
-      return response;
-    },
-    error => {
-      errorHandler(error.message || defaultError);
-      return Promise.reject(error);
+  instance.interceptors.response.use(response => {
+    if (showResponseError(response)) {
+      errorHandler(getResponseError(response) || defaultError);
     }
-  );
+    return response;
+  }, error => {
+    errorHandler(error.message || defaultError);
+    return Promise.reject(error);
+  });
 
   const ajax = ({ cache, cacheOptions = {}, force, ...params }) => {
     let requestToken, cacheKey;
@@ -92,19 +89,16 @@ const createAjax = options => {
     };
 
     if (params.hasOwnProperty('loader') && typeof params.loader === 'function') {
-      return recordCache(
-        Promise.resolve(params.loader(omit(params, ['loader'])))
-          .then(data => ({
-            data: {
-              code: 0,
-              data
-            }
-          }))
-          .catch(err => {
-            errorHandler(err.message || defaultError);
-            return { data: { code: 500, msg: err.message } };
-          })
-      );
+      return recordCache(Promise.resolve(params.loader(omit(params, ['loader'])))
+        .then(data => ({
+          data: {
+            code: 0, data
+          }
+        }))
+        .catch(err => {
+          errorHandler(err.message || defaultError);
+          return { data: { code: 500, msg: err.message } };
+        }));
     }
     parseUrlParams(params);
     return recordCache(instance(params));
