@@ -2,8 +2,8 @@
   "isFull": false,
   "list": [
     {
-      "title": "这里填写示例标题",
-      "description": "这里填写示例说明",
+      "title": "基础请求",
+      "description": "创建 ajax 实例，发送 GET/POST 请求，使用 Loader 模拟数据，URL 参数替换",
       "code": "./base.js",
       "scope": [
         {
@@ -14,6 +14,106 @@
         {
           "name": "antd",
           "packageName": "antd"
+        }
+      ]
+    },
+    {
+      "title": "SSE 实时推送",
+      "description": "使用 ajax.sse 建立 SSE 连接，支持 onMessage/onData/onOpen/onError 回调、命名事件监听、timeout 自动重连、数据增量合并",
+      "code": "./sse.js",
+      "scope": [
+        {
+          "name": "_AxiosFetch",
+          "packageName": "@kne/current-lib_axios-fetch",
+          "importStatement": "import * as _AxiosFetch from \"@kne/axios-fetch\""
+        },
+        {
+          "name": "antd",
+          "packageName": "antd"
+        }
+      ]
+    },
+    {
+      "title": "工具函数",
+      "description": "buildUrlWithParams 构建 URL 查询参数、parseUrlParams 路径参数替换、SSE headersToParams 自定义参数转换",
+      "code": "./utils.js",
+      "scope": [
+        {
+          "name": "_AxiosFetch",
+          "packageName": "@kne/current-lib_axios-fetch",
+          "importStatement": "import * as _AxiosFetch from \"@kne/axios-fetch\""
+        },
+        {
+          "name": "antd",
+          "packageName": "antd"
+        }
+      ]
+    },
+    {
+      "title": "请求缓存",
+      "description": "启用 cache 缓存请求结果，设置 TTL 和 cacheKey，强制刷新缓存",
+      "code": "./cache.js",
+      "scope": [
+        {
+          "name": "_AxiosFetch",
+          "packageName": "@kne/current-lib_axios-fetch",
+          "importStatement": "import * as _AxiosFetch from \"@kne/axios-fetch\""
+        },
+        {
+          "name": "antd",
+          "packageName": "antd"
+        }
+      ]
+    },
+    {
+      "title": "表单提交",
+      "description": "使用 ajax.postForm 提交表单数据，支持查询参数和 URL 路径参数",
+      "code": "./post-form.js",
+      "scope": [
+        {
+          "name": "_AxiosFetch",
+          "packageName": "@kne/current-lib_axios-fetch",
+          "importStatement": "import * as _AxiosFetch from \"@kne/axios-fetch\""
+        },
+        {
+          "name": "antd",
+          "packageName": "antd"
+        }
+      ]
+    },
+    {
+      "title": "错误处理",
+      "description": "自定义 errorHandler / showResponseError / getResponseError，静默单次请求错误，Loader 异常处理",
+      "code": "./error-handling.js",
+      "scope": [
+        {
+          "name": "_AxiosFetch",
+          "packageName": "@kne/current-lib_axios-fetch",
+          "importStatement": "import * as _AxiosFetch from \"@kne/axios-fetch\""
+        },
+        {
+          "name": "antd",
+          "packageName": "antd"
+        }
+      ]
+    },
+    {
+      "title": "AI 对话",
+      "description": "基于 ajax.sse 流式输出和 @ant-design/x 构建智能对话界面，使用 MockEventSource 模拟 AI 流式回复",
+      "code": "./ai-chat.js",
+      "scope": [
+        {
+          "name": "_AxiosFetch",
+          "packageName": "@kne/current-lib_axios-fetch",
+          "importStatement": "import * as _AxiosFetch from \"@kne/axios-fetch\""
+        },
+        {
+          "name": "antd",
+          "packageName": "antd"
+        },
+        {
+          "name": "AntdX",
+          "packageName": "@ant-design/x"
         }
       ]
     }

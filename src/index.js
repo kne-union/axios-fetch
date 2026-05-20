@@ -1,5 +1,4 @@
 import axios from 'axios';
-import omit from 'lodash/omit';
 import Cache from './Cache';
 import getRequestToken from './getRequestToken';
 
@@ -11,40 +10,47 @@ export const parseUrlParams = params => {
   }
 };
 
+export const buildUrlWithParams = (url, params = {}) => {
+  const query = Object.keys(params)
+    .filter(key => params[key] !== undefined && params[key] !== null && params[key] !== '')
+    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+    .join('&');
+  if (!query) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}${query}`;
+};
+
 const createAjax = options => {
-  const {
-    cache,
-    errorHandler,
-    registerInterceptors,
-    getDefaultHeaders,
-    defaultError,
-    showResponseError,
-    getResponseError,
-    ...axiosOptions
-  } = Object.assign({}, {
-    baseURL: '', getDefaultHeaders: () => ({}), defaultError: '请求发生错误', showResponseError: response => {
+  const { cache, errorHandler, registerInterceptors, getDefaultHeaders, defaultError, showResponseError, getResponseError, ...axiosOptions } = {
+    baseURL: '',
+    getDefaultHeaders: () => ({}),
+    defaultError: '请求发生错误',
+    showResponseError: response => {
       if (response.config.showError === false) {
         return false;
       }
       return !(response.status >= 200 && response.status < 300) || (Object.hasOwn(response.data, 'code') && response.data.code !== 0);
-    }, getResponseError: response => {
+    },
+    getResponseError: response => {
       return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
-    }, errorHandler: () => {
-    }, validateStatus: function() {
+    },
+    errorHandler: () => {},
+    validateStatus: function () {
       return true;
-    }, registerInterceptors: () => {
-    }
-  }, options);
+    },
+    registerInterceptors: () => {},
+    ...options
+  };
 
-  const cacheInstance = new Cache(Object.assign({}, { ttl: 1000 * 60 * 10, maxLength: 1000, isLocal: false }, cache));
+  const cacheInstance = new Cache({ ttl: 1000 * 60 * 10, maxLength: 1000, isLocal: false, ...cache });
 
   const baseURL = axiosOptions.baseURL || axiosOptions.baseUrl || '';
-  const instance = axios.create(omit(Object.assign({}, axiosOptions, { baseURL }), ['baseUrl']));
+  const { baseUrl, ...restAxiosOptions } = axiosOptions;
+  const instance = axios.create({ ...restAxiosOptions, baseURL });
 
   typeof registerInterceptors === 'function' && registerInterceptors(instance.interceptors);
 
   instance.interceptors.request.use(async config => {
-    config.headers = Object.assign({}, getDefaultHeaders(), config.headers);
+    config.headers = { ...getDefaultHeaders(), ...config.headers };
     if (config.method.toUpperCase() !== 'GET' && !config.headers['Content-Type']) {
       config.headers['Content-Type'] = 'application/json';
     }
@@ -52,15 +58,18 @@ const createAjax = options => {
     return config;
   });
 
-  instance.interceptors.response.use(response => {
-    if (showResponseError(response)) {
-      errorHandler(getResponseError(response) || defaultError);
+  instance.interceptors.response.use(
+    response => {
+      if (showResponseError(response)) {
+        errorHandler(getResponseError(response) || defaultError);
+      }
+      return response;
+    },
+    error => {
+      errorHandler(error.message || defaultError);
+      return Promise.reject(error);
     }
-    return response;
-  }, error => {
-    errorHandler(error.message || defaultError);
-    return Promise.reject(error);
-  });
+  );
 
   const ajax = ({ cache, cacheOptions = {}, force, ...params }) => {
     let requestToken, cacheKey;
@@ -69,7 +78,9 @@ const createAjax = options => {
       cacheKey = (cache === true ? '' : cache) + requestToken;
       const cacheData = cacheInstance.get(cacheKey);
       if (!force && cacheData) {
-        return Promise.resolve(cacheData);
+        const p = Promise.resolve(cacheData);
+        p._fromCache = true;
+        return p;
       }
     }
 
@@ -78,7 +89,7 @@ const createAjax = options => {
         return promise;
       }
       if (cacheOptions.isLocal) {
-        promise.then(data => {
+        promise = promise.then(data => {
           cacheInstance.put(cacheKey, data, cacheOptions);
           return data;
         });
@@ -89,19 +100,27 @@ const createAjax = options => {
     };
 
     if (params.hasOwnProperty('loader') && typeof params.loader === 'function') {
-      return recordCache(Promise.resolve(params.loader(omit(params, ['loader'])))
-        .then(data => ({
-          data: {
-            code: 0, data
-          }
-        }))
-        .catch(err => {
-          errorHandler(err.message || defaultError);
-          return { data: { code: 500, msg: err.message } };
-        }));
+      const { loader, ...loaderParams } = params;
+      const p = recordCache(
+        Promise.resolve(loader(loaderParams))
+          .then(data => ({
+            data: {
+              code: 0,
+              data
+            }
+          }))
+          .catch(err => {
+            errorHandler(err.message || defaultError);
+            return { data: { code: 500, msg: err.message } };
+          })
+      );
+      p._fromCache = false;
+      return p;
     }
     parseUrlParams(params);
-    return recordCache(instance(params));
+    const p = recordCache(instance(params));
+    p._fromCache = false;
+    return p;
   };
 
   ajax.postForm = config => {
@@ -110,11 +129,114 @@ const createAjax = options => {
     const searchParams = new URLSearchParams(params);
 
     const queryString = searchParams.toString();
-    return instance.postForm(`${url}${queryString ? '?' + queryString : ''}`, data, Object.assign({}, options));
+    return instance.postForm(`${url}${queryString ? '?' + queryString : ''}`, data, { ...options });
+  };
+  ajax.sse = ({ url, headersToParams, params, onMessage, onOpen, onError, onData, events, mergeData, EventSource: CustomEventSource, ...options }) => {
+    const EventSourceClass = CustomEventSource || (typeof window !== 'undefined' && window.EventSource);
+    if (typeof EventSourceClass !== 'function') {
+      return null;
+    }
+
+    const fullUrl = url.startsWith('http') ? url : baseURL + url;
+    const headerParams = typeof headersToParams === 'function' ? headersToParams(getDefaultHeaders()) : getDefaultHeaders();
+    const targetUrl = buildUrlWithParams(fullUrl, { ...headerParams, ...params });
+
+    let data = null;
+    let isConnected = false;
+    let lastUpdatedAt = null;
+    let eventSource = null;
+    let closed = false;
+
+    const parseData = event => {
+      try {
+        return JSON.parse(event.data);
+      } catch (e) {
+        return event.data;
+      }
+    };
+
+    const merge =
+      mergeData ||
+      ((prev, next) => {
+        if (prev && typeof prev === 'object' && !Array.isArray(prev) && next && typeof next === 'object' && !Array.isArray(next)) {
+          return Object.assign({}, prev, next);
+        }
+        return next;
+      });
+
+    const connect = () => {
+      eventSource = new EventSourceClass(targetUrl, options);
+
+      eventSource.onopen = event => {
+        isConnected = true;
+        if (typeof onOpen === 'function') onOpen(event);
+      };
+
+      eventSource.onmessage = event => {
+        const parsed = parseData(event);
+        if (parsed !== null && parsed !== undefined) {
+          data = merge(data, parsed);
+          lastUpdatedAt = Date.now();
+        }
+        if (typeof onMessage === 'function') onMessage(parsed, event);
+        if (typeof onData === 'function') onData(data, event);
+      };
+
+      eventSource.onerror = event => {
+        isConnected = eventSource.readyState === EventSourceClass.OPEN;
+        if (eventSource.readyState === EventSourceClass.CLOSED) {
+          errorHandler(event.message || defaultError);
+        }
+        if (typeof onError === 'function') onError(event);
+      };
+
+      eventSource.addEventListener('timeout', () => {
+        if (closed) return;
+        eventSource.close();
+        connect();
+      });
+
+      if (events && typeof events === 'object') {
+        for (const [name, handler] of Object.entries(events)) {
+          if (typeof handler === 'function') {
+            eventSource.addEventListener(name, event => {
+              const parsed = parseData(event);
+              if (parsed !== null && parsed !== undefined) {
+                data = merge(data, parsed);
+                lastUpdatedAt = Date.now();
+              }
+              handler(parsed, event);
+            });
+          }
+        }
+      }
+    };
+
+    connect();
+
+    return {
+      get data() {
+        return data;
+      },
+      get isConnected() {
+        return isConnected;
+      },
+      get lastUpdatedAt() {
+        return lastUpdatedAt;
+      },
+      get eventSource() {
+        return eventSource;
+      },
+      close: () => {
+        closed = true;
+        eventSource.close();
+      }
+    };
   };
   ajax.baseURL = ajax.baseUrl = baseURL;
   ajax.parseUrlParams = parseUrlParams;
   ajax.getDefaultHeaders = getDefaultHeaders;
+  ajax.buildUrlWithParams = buildUrlWithParams;
   return ajax;
 };
 
