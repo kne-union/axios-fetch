@@ -2,17 +2,18 @@ class Cache {
   static KEY_NAME = 'AXIOS_FETCH_CACHE';
 
   static now() {
-    return new Date().getTime();
+    return Date.now();
   }
 
   constructor(options) {
-    const { ttl, maxLength, isLocal, localName } = Object.assign({}, options);
-    this.ttl = ttl || 0;
+    const { ttl, maxLength, isLocal, localName } = { ttl: 0, maxLength: 1000, isLocal: false, ...options };
+    this.ttl = ttl;
     this.data = {};
     this.cacheNameMapping = {};
-    this.maxLength = maxLength || 1000;
+    this.maxLength = maxLength;
     this.isLocal = localName ? true : isLocal;
     this.localName = localName;
+    this._dirty = false;
     this._load();
   }
 
@@ -21,86 +22,106 @@ class Cache {
       return;
     }
     try {
-      const dataString = window.localStorage && window.localStorage.getItem(this.localName || Cache.KEY_NAME);
+      const dataString = window.localStorage?.getItem(this.localName || Cache.KEY_NAME);
       if (!dataString) {
         return;
       }
 
       const dataObj = JSON.parse(dataString);
-      Object.keys(dataObj).forEach(key => {
+      for (const key of Object.keys(dataObj)) {
         dataObj[key].isLocal = true;
-      });
+      }
       this.data = dataObj;
     } catch (e) {}
   }
 
   _save() {
-    if (!this.isLocal) {
+    if (!this.isLocal || !this._dirty) {
       return;
     }
+    this._dirty = false;
     const keys = Object.keys(this.data);
-    Promise.all(keys.map(key => this.data[key].value)).then(data => {
+    Promise.allSettled(keys.map(key => this.data[key].value)).then(results => {
       const output = {};
-      Object.keys(this.data).forEach((key, index) => {
+      keys.forEach((key, index) => {
         const { isLocal, ...props } = this.data[key];
-        if (isLocal === true) {
-          output[key] = Object.assign({}, props, { value: data[index] });
+        if (isLocal === true && results[index].status === 'fulfilled') {
+          output[key] = { ...props, value: results[index].value };
         }
       });
-      window.localStorage && window.localStorage.setItem(this.localName || Cache.KEY_NAME, JSON.stringify(output));
+      window.localStorage?.setItem(this.localName || Cache.KEY_NAME, JSON.stringify(output));
     });
+  }
+
+  _markDirty() {
+    this._dirty = true;
   }
 
   get(key) {
     const obj = this.data[key];
-    let val = null;
-    if (obj) {
-      val = obj.value;
-      if (obj.expires && Cache.now() >= obj.expires) {
-        val = null;
-        delete this.data[key];
-      }
+    if (!obj) {
+      return null;
     }
-    this._save();
-    return val;
+    if (obj.expires && Cache.now() >= obj.expires) {
+      delete this.data[key];
+      this._markDirty();
+      this._save();
+      return null;
+    }
+    return obj.value;
   }
 
   delByCacheName(cacheName) {
     if (this.cacheNameMapping[cacheName]) {
       this.cacheNameMapping[cacheName].forEach(key => {
-        this.del(key);
+        this._del(key);
       });
       this.cacheNameMapping[cacheName].clear();
+      this._save();
     }
   }
 
-  del(key) {
-    const oldValue = this.get(key);
+  _del(key) {
+    const obj = this.data[key];
     delete this.data[key];
+    this._markDirty();
+    if (obj && obj.expires && Cache.now() >= obj.expires) {
+      return null;
+    }
+    return obj ? obj.value : null;
+  }
+
+  del(key) {
+    const oldValue = this._del(key);
     this._save();
     return oldValue;
   }
 
   put(key, val, options) {
-    let { ttl, isLocal, cacheName } = options;
+    let { ttl, isLocal, cacheName } = options || {};
     if (ttl === undefined) {
       ttl = this.ttl;
     }
-    let oldValue = this.del(key);
+    const oldValue = this._del(key);
     if (val !== null) {
       const keys = Object.keys(this.data);
       if (keys.length >= this.maxLength) {
-        const delKey = keys.sort((a, b) => {
-          return this.data[a].createTime - this.data[b].createTime;
-        })[0];
-        delete this.data[delKey];
+        let oldestKey = keys[0];
+        let oldestTime = this.data[keys[0]].createTime;
+        for (let i = 1; i < keys.length; i++) {
+          if (this.data[keys[i]].createTime < oldestTime) {
+            oldestTime = this.data[keys[i]].createTime;
+            oldestKey = keys[i];
+          }
+        }
+        delete this.data[oldestKey];
       }
       const now = Cache.now();
       this.data[key] = { expires: ttl === 0 ? null : now + ttl, value: val, createTime: now, isLocal };
-      if (cacheName && !this.cacheNameMapping[cacheName]) {
-        this.cacheNameMapping[cacheName] = new Set();
-      }
       if (cacheName) {
+        if (!this.cacheNameMapping[cacheName]) {
+          this.cacheNameMapping[cacheName] = new Set();
+        }
         this.cacheNameMapping[cacheName].add(key);
       }
     }
@@ -110,6 +131,7 @@ class Cache {
 
   clean() {
     this.data = {};
+    this._markDirty();
     this._save();
   }
 }
