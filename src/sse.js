@@ -51,6 +51,12 @@ const createClient = ({ EventSourceClass, targetUrl, eventSourceOptions, handler
     return data;
   };
 
+  const close = () => {
+    closed = true;
+    isConnected = false;
+    eventSource && eventSource.close();
+  };
+
   const connect = url => {
     if (closed) return;
     eventSource = new EventSourceClass(url, eventSourceOptions);
@@ -70,6 +76,7 @@ const createClient = ({ EventSourceClass, targetUrl, eventSourceOptions, handler
     eventSource.onerror = event => {
       isConnected = eventSource.readyState === EventSourceClass.OPEN;
       if (eventSource.readyState === EventSourceClass.CLOSED) {
+        close();
         errorHandler(event.message || defaultError);
       }
       if (typeof onError === 'function') onError(event);
@@ -109,11 +116,7 @@ const createClient = ({ EventSourceClass, targetUrl, eventSourceOptions, handler
     get eventSource() {
       return eventSource;
     },
-    close: () => {
-      closed = true;
-      isConnected = false;
-      eventSource && eventSource.close();
-    }
+    close
   };
 };
 
