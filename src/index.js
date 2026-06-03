@@ -1,17 +1,23 @@
 import axios from 'axios';
 import Cache from './Cache';
 import getRequestToken from './getRequestToken';
+import createSse, { normalizeHeaders } from './sse';
 
 export const parseUrlParams = params => {
-  if (typeof params.urlParams === 'object' && Object.keys(params.urlParams).length > 0 && typeof params.url === 'string') {
+  if (!params || typeof params !== 'object') {
+    return params;
+  }
+  const { urlParams } = params;
+  if (urlParams && typeof urlParams === 'object' && Object.keys(urlParams).length > 0 && typeof params.url === 'string') {
     params.url = params.url.replace(/{([\s\S]+?)}/g, (match, name) => {
-      return params.urlParams.hasOwnProperty(name) ? params.urlParams[name] : match;
+      return Object.prototype.hasOwnProperty.call(urlParams, name) ? encodeURIComponent(urlParams[name]) : match;
     });
   }
+  return params;
 };
 
 export const buildUrlWithParams = (url, params = {}) => {
-  const query = Object.keys(params)
+  const query = Object.keys(params || {})
     .filter(key => params[key] !== undefined && params[key] !== null && params[key] !== '')
     .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
     .join('&');
@@ -25,10 +31,12 @@ const createAjax = options => {
     getDefaultHeaders: () => ({}),
     defaultError: '请求发生错误',
     showResponseError: response => {
-      if (response.config.showError === false) {
+      if (response?.config?.showError === false) {
         return false;
       }
-      return !(response.status >= 200 && response.status < 300) || (Object.hasOwn(response.data, 'code') && response.data.code !== 0);
+      const data = response?.data;
+      const hasCode = data && typeof data === 'object' && Object.prototype.hasOwnProperty.call(data, 'code');
+      return !(response?.status >= 200 && response.status < 300) || (hasCode && data.code !== 0);
     },
     getResponseError: response => {
       return response?.data?.msg || response?.data?.error_msg?.detail || response?.data?.error_msg;
@@ -41,7 +49,7 @@ const createAjax = options => {
     ...options
   };
 
-  const cacheInstance = new Cache({ ttl: 1000 * 60 * 10, maxLength: 1000, isLocal: false, ...cache });
+  const cacheInstance = new Cache({ ttl: 1000 * 60 * 10, maxLength: 1000, isLocal: false, onError: errorHandler, ...cache });
 
   const baseURL = axiosOptions.baseURL || axiosOptions.baseUrl || '';
   const { baseUrl, ...restAxiosOptions } = axiosOptions;
@@ -50,8 +58,10 @@ const createAjax = options => {
   typeof registerInterceptors === 'function' && registerInterceptors(instance.interceptors);
 
   instance.interceptors.request.use(async config => {
-    config.headers = { ...getDefaultHeaders(), ...config.headers };
-    if (config.method.toUpperCase() !== 'GET' && !config.headers['Content-Type']) {
+    config.headers = { ...getDefaultHeaders(), ...normalizeHeaders(config.headers) };
+    const method = (config.method || 'get').toUpperCase();
+    const hasContentType = Object.keys(config.headers).some(key => key.toLowerCase() === 'content-type');
+    if (method !== 'GET' && !hasContentType) {
       config.headers['Content-Type'] = 'application/json';
     }
 
@@ -71,7 +81,7 @@ const createAjax = options => {
     }
   );
 
-  const ajax = ({ cache, cacheOptions = {}, force, ...params }) => {
+  const ajax = ({ cache, cacheOptions = {}, force, ...params } = {}) => {
     let requestToken, cacheKey;
     if (cache) {
       requestToken = getRequestToken(params);
@@ -99,7 +109,7 @@ const createAjax = options => {
       return promise;
     };
 
-    if (params.hasOwnProperty('loader') && typeof params.loader === 'function') {
+    if (Object.prototype.hasOwnProperty.call(params, 'loader') && typeof params.loader === 'function') {
       const { loader, ...loaderParams } = params;
       const p = recordCache(
         Promise.resolve(loader(loaderParams))
@@ -131,108 +141,10 @@ const createAjax = options => {
     const queryString = searchParams.toString();
     return instance.postForm(`${url}${queryString ? '?' + queryString : ''}`, data, { ...options });
   };
-  ajax.sse = ({ url, headersToParams, params, onMessage, onOpen, onError, onData, events, mergeData, EventSource: CustomEventSource, ...options }) => {
-    const EventSourceClass = CustomEventSource || (typeof window !== 'undefined' && window.EventSource);
-    if (typeof EventSourceClass !== 'function') {
-      return null;
-    }
-
-    const fullUrl = url.startsWith('http') ? url : baseURL + url;
-    const headerParams = typeof headersToParams === 'function' ? headersToParams(getDefaultHeaders()) : getDefaultHeaders();
-    const targetUrl = buildUrlWithParams(fullUrl, { ...headerParams, ...params });
-
-    let data = null;
-    let isConnected = false;
-    let lastUpdatedAt = null;
-    let eventSource = null;
-    let closed = false;
-
-    const parseData = event => {
-      try {
-        return JSON.parse(event.data);
-      } catch (e) {
-        return event.data;
-      }
-    };
-
-    const merge =
-      mergeData ||
-      ((prev, next) => {
-        if (prev && typeof prev === 'object' && !Array.isArray(prev) && next && typeof next === 'object' && !Array.isArray(next)) {
-          return Object.assign({}, prev, next);
-        }
-        return next;
-      });
-
-    const connect = () => {
-      eventSource = new EventSourceClass(targetUrl, options);
-
-      eventSource.onopen = event => {
-        isConnected = true;
-        if (typeof onOpen === 'function') onOpen(event);
-      };
-
-      eventSource.onmessage = event => {
-        const parsed = parseData(event);
-        if (parsed !== null && parsed !== undefined) {
-          data = merge(data, parsed);
-          lastUpdatedAt = Date.now();
-        }
-        if (typeof onMessage === 'function') onMessage(parsed, event);
-        if (typeof onData === 'function') onData(data, event);
-      };
-
-      eventSource.onerror = event => {
-        isConnected = eventSource.readyState === EventSourceClass.OPEN;
-        if (eventSource.readyState === EventSourceClass.CLOSED) {
-          errorHandler(event.message || defaultError);
-        }
-        if (typeof onError === 'function') onError(event);
-      };
-
-      eventSource.addEventListener('timeout', () => {
-        if (closed) return;
-        eventSource.close();
-        connect();
-      });
-
-      if (events && typeof events === 'object') {
-        for (const [name, handler] of Object.entries(events)) {
-          if (typeof handler === 'function') {
-            eventSource.addEventListener(name, event => {
-              const parsed = parseData(event);
-              if (parsed !== null && parsed !== undefined) {
-                data = merge(data, parsed);
-                lastUpdatedAt = Date.now();
-              }
-              handler(parsed, event);
-            });
-          }
-        }
-      }
-    };
-
-    connect();
-
-    return {
-      get data() {
-        return data;
-      },
-      get isConnected() {
-        return isConnected;
-      },
-      get lastUpdatedAt() {
-        return lastUpdatedAt;
-      },
-      get eventSource() {
-        return eventSource;
-      },
-      close: () => {
-        closed = true;
-        eventSource.close();
-      }
-    };
-  };
+  ajax.sse = createSse({ instance, baseURL, parseUrlParams, buildUrlWithParams, errorHandler, defaultError });
+  ajax.cleanCache = () => cacheInstance.clean();
+  ajax.delCache = key => cacheInstance.del(key);
+  ajax.delCacheByName = cacheName => cacheInstance.delByCacheName(cacheName);
   ajax.baseURL = ajax.baseUrl = baseURL;
   ajax.parseUrlParams = parseUrlParams;
   ajax.getDefaultHeaders = getDefaultHeaders;

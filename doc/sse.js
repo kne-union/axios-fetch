@@ -3,8 +3,16 @@ const { Button, Card, Tag, Space, message } = antd;
 const { useState, useEffect, useRef } = React;
 
 const ajax = createAjax({
-  baseURL: 'https://jsonplaceholder.typicode.com',
-  getDefaultHeaders: () => ({ 'X-Token': 'test-token-123' })
+  baseURL: 'https://api.example.com',
+  getDefaultHeaders: () => ({ 'X-Token': 'test-token-123', appName: 'demo-app', env: 'test' }),
+  registerInterceptors: interceptors => {
+    interceptors.request.use(config => {
+      config.baseURL = `${config.baseURL}/${config.headers.appName}/${config.headers.env}`;
+      delete config.headers.appName;
+      delete config.headers.env;
+      return config;
+    });
+  }
 });
 
 // Mock EventSource 实现
@@ -39,7 +47,7 @@ class MockEventSource {
       { type: 'message', data: JSON.stringify({ id: 1, status: 'processing', progress: 50 }) },
       { type: 'update', data: JSON.stringify({ progress: 75, message: '即将完成' }) },
       { type: 'message', data: JSON.stringify({ id: 1, status: 'processing', progress: 75 }) },
-      { type: 'message', data: JSON.stringify({ id: 1, status: 'completed', progress: 100 }) },
+      { type: 'message', data: JSON.stringify({ id: 1, status: 'completed', progress: 100 }) }
     ];
 
     this._timer = setInterval(() => {
@@ -102,12 +110,13 @@ const SseExample = () => {
     setLogList(prev => [...prev.slice(-20), { type, text, time: new Date().toLocaleTimeString() }]);
   };
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (clientRef.current) {
       message.warning('连接已存在，请先关闭');
       return;
     }
-    const client = ajax.sse({
+    addLog('info', '正在连接...(Mock模式)');
+    const client = await ajax.sse({
       url: '/sse-demo',
       params: { interval: 3 },
       EventSource: MockEventSource, // 传入自定义 EventSource 实现
@@ -120,8 +129,12 @@ const SseExample = () => {
         timeout: () => addLog('timeout', '收到 timeout 事件，将自动重连')
       }
     });
+    if (!client) {
+      addLog('error', '当前环境不支持 EventSource');
+      return;
+    }
     clientRef.current = client;
-    addLog('info', '正在连接...(Mock模式)');
+    addLog('info', `实际连接地址: ${client.eventSource.url}`);
   };
 
   const handleClose = () => {
@@ -153,21 +166,29 @@ const SseExample = () => {
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Card title="SSE 实时推送 (Mock模式)" size="small" extra={<Tag color={clientRef.current?.isConnected ? 'green' : 'default'}>{clientRef.current?.isConnected ? '已连接' : '未连接'}</Tag>}>
         <Space>
-          <Button type="primary" onClick={handleConnect}>建立连接</Button>
-          <Button danger onClick={handleClose}>关闭连接</Button>
+          <Button type="primary" onClick={handleConnect}>
+            建立连接
+          </Button>
+          <Button danger onClick={handleClose}>
+            关闭连接
+          </Button>
           <Button onClick={handleStatus}>查看状态</Button>
         </Space>
       </Card>
       <Card title="事件日志" size="small" style={{ maxHeight: 300, overflow: 'auto' }}>
-        {logList.length === 0 ? <div style={{ color: '#999' }}>暂无日志</div> : logList.map((log, i) => (
-          <div key={i} style={{ fontSize: 12, lineHeight: '20px', borderBottom: '1px solid #f5f5f5', padding: '4px 0' }}>
-            <Tag color={{ open: 'green', message: 'blue', data: 'purple', event: 'cyan', error: 'red', close: 'orange', timeout: 'gold', info: 'default' }[log.type]} style={{ fontSize: 11 }}>
-              {log.type}
-            </Tag>
-            <span style={{ color: '#999', marginRight: 8 }}>{log.time}</span>
-            {log.text}
-          </div>
-        ))}
+        {logList.length === 0 ? (
+          <div style={{ color: '#999' }}>暂无日志</div>
+        ) : (
+          logList.map((log, i) => (
+            <div key={i} style={{ fontSize: 12, lineHeight: '20px', borderBottom: '1px solid #f5f5f5', padding: '4px 0' }}>
+              <Tag color={{ open: 'green', message: 'blue', data: 'purple', event: 'cyan', error: 'red', close: 'orange', timeout: 'gold', info: 'default' }[log.type]} style={{ fontSize: 11 }}>
+                {log.type}
+              </Tag>
+              <span style={{ color: '#999', marginRight: 8 }}>{log.time}</span>
+              {log.text}
+            </div>
+          ))
+        )}
         <div ref={logEndRef} />
       </Card>
     </Space>

@@ -1,5 +1,5 @@
-const { default: createAjax, buildUrlWithParams, parseUrlParams } = _AxiosFetch;
-const { Button, Card, Space, Input, Select, message, Table } = antd;
+const { buildUrlWithParams, parseUrlParams } = _AxiosFetch;
+const { Button, Card, Space, Input, message } = antd;
 const { useState } = React;
 
 const UtilsExample = () => {
@@ -30,18 +30,15 @@ const UtilsExample = () => {
     message.success('替换完成');
   };
 
-  const ajax = createAjax({
-    baseURL: 'https://api.example.com',
-    getDefaultHeaders: () => ({ Authorization: 'Bearer my-token', 'X-App-Id': 'demo-app' })
-  });
-
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Card title="buildUrlWithParams" size="small">
         <Space direction="vertical" style={{ width: '100%' }}>
           <Input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="基础 URL" />
           <Input value={paramsInput} onChange={e => setParamsInput(e.target.value)} placeholder="参数 (key=value&key2=value2)" />
-          <Button type="primary" onClick={handleBuildUrl}>构建 URL</Button>
+          <Button type="primary" onClick={handleBuildUrl}>
+            构建 URL
+          </Button>
           {builtUrl && <div style={{ padding: 8, background: '#f5f5f5', borderRadius: 4, wordBreak: 'break-all', fontSize: 13 }}>{builtUrl}</div>}
         </Space>
       </Card>
@@ -49,7 +46,9 @@ const UtilsExample = () => {
         <Space direction="vertical" style={{ width: '100%' }}>
           <Input value={urlTemplate} onChange={e => setUrlTemplate(e.target.value)} placeholder="URL 模板，使用 {paramName}" />
           <div style={{ fontSize: 12, color: '#666' }}>urlParams: {`{ userId: '1', postId: '42' }`}</div>
-          <Button type="primary" onClick={handleParseUrl}>替换参数</Button>
+          <Button type="primary" onClick={handleParseUrl}>
+            替换参数
+          </Button>
           {resolvedUrl && <div style={{ padding: 8, background: '#f5f5f5', borderRadius: 4, fontSize: 13 }}>{resolvedUrl}</div>}
         </Space>
       </Card>

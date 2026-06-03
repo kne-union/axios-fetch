@@ -111,7 +111,7 @@ const AiChatExample = () => {
   const accumulatedRef = useRef('');
 
   const handleSubmit = useCallback(
-    msg => {
+    async msg => {
       const content = msg || inputValue;
       if (!content.trim() || loading) return;
 
@@ -128,7 +128,7 @@ const AiChatExample = () => {
       const MockES = createMockEventSource(replyText);
 
       // 使用 ajax.sse 接入流式输出
-      const client = ajax.sse({
+      const client = await ajax.sse({
         url: '/ai-chat',
         params: { prompt: content },
         EventSource: MockES,
@@ -145,6 +145,12 @@ const AiChatExample = () => {
           accumulatedRef.current = '';
         }
       });
+
+      if (!client) {
+        setLoading(false);
+        setStreamingText('');
+        return;
+      }
 
       sseRef.current = client;
 
@@ -176,7 +182,7 @@ const AiChatExample = () => {
     setStreamingText('');
     accumulatedRef.current = '';
     setLoading(false);
-  }, [streamingText]);
+  }, []);
 
   // 构建气泡列表数据
   const bubbleItems = messages
