@@ -152,8 +152,16 @@ const { Button, Card, Tag, Space, message } = antd;
 const { useState, useEffect, useRef } = React;
 
 const ajax = createAjax({
-  baseURL: 'https://jsonplaceholder.typicode.com',
-  getDefaultHeaders: () => ({ 'X-Token': 'test-token-123' })
+  baseURL: 'https://api.example.com',
+  getDefaultHeaders: () => ({ 'X-Token': 'test-token-123', appName: 'demo-app', env: 'test' }),
+  registerInterceptors: interceptors => {
+    interceptors.request.use(config => {
+      config.baseURL = &#96;${config.baseURL}/${config.headers.appName}/${config.headers.env}&#96;;
+      delete config.headers.appName;
+      delete config.headers.env;
+      return config;
+    });
+  }
 });
 
 // Mock EventSource 实现
@@ -188,7 +196,7 @@ class MockEventSource {
       { type: 'message', data: JSON.stringify({ id: 1, status: 'processing', progress: 50 }) },
       { type: 'update', data: JSON.stringify({ progress: 75, message: '即将完成' }) },
       { type: 'message', data: JSON.stringify({ id: 1, status: 'processing', progress: 75 }) },
-      { type: 'message', data: JSON.stringify({ id: 1, status: 'completed', progress: 100 }) },
+      { type: 'message', data: JSON.stringify({ id: 1, status: 'completed', progress: 100 }) }
     ];
 
     this._timer = setInterval(() => {
@@ -251,12 +259,13 @@ const SseExample = () => {
     setLogList(prev => [...prev.slice(-20), { type, text, time: new Date().toLocaleTimeString() }]);
   };
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (clientRef.current) {
       message.warning('连接已存在，请先关闭');
       return;
     }
-    const client = ajax.sse({
+    addLog('info', '正在连接...(Mock模式)');
+    const client = await ajax.sse({
       url: '/sse-demo',
       params: { interval: 3 },
       EventSource: MockEventSource, // 传入自定义 EventSource 实现
@@ -269,8 +278,12 @@ const SseExample = () => {
         timeout: () => addLog('timeout', '收到 timeout 事件，将自动重连')
       }
     });
+    if (!client) {
+      addLog('error', '当前环境不支持 EventSource');
+      return;
+    }
     clientRef.current = client;
-    addLog('info', '正在连接...(Mock模式)');
+    addLog('info', &#96;实际连接地址: ${client.eventSource.url}&#96;);
   };
 
   const handleClose = () => {
@@ -302,21 +315,29 @@ const SseExample = () => {
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Card title="SSE 实时推送 (Mock模式)" size="small" extra={<Tag color={clientRef.current?.isConnected ? 'green' : 'default'}>{clientRef.current?.isConnected ? '已连接' : '未连接'}</Tag>}>
         <Space>
-          <Button type="primary" onClick={handleConnect}>建立连接</Button>
-          <Button danger onClick={handleClose}>关闭连接</Button>
+          <Button type="primary" onClick={handleConnect}>
+            建立连接
+          </Button>
+          <Button danger onClick={handleClose}>
+            关闭连接
+          </Button>
           <Button onClick={handleStatus}>查看状态</Button>
         </Space>
       </Card>
       <Card title="事件日志" size="small" style={{ maxHeight: 300, overflow: 'auto' }}>
-        {logList.length === 0 ? <div style={{ color: '#999' }}>暂无日志</div> : logList.map((log, i) => (
-          <div key={i} style={{ fontSize: 12, lineHeight: '20px', borderBottom: '1px solid #f5f5f5', padding: '4px 0' }}>
-            <Tag color={{ open: 'green', message: 'blue', data: 'purple', event: 'cyan', error: 'red', close: 'orange', timeout: 'gold', info: 'default' }[log.type]} style={{ fontSize: 11 }}>
-              {log.type}
-            </Tag>
-            <span style={{ color: '#999', marginRight: 8 }}>{log.time}</span>
-            {log.text}
-          </div>
-        ))}
+        {logList.length === 0 ? (
+          <div style={{ color: '#999' }}>暂无日志</div>
+        ) : (
+          logList.map((log, i) => (
+            <div key={i} style={{ fontSize: 12, lineHeight: '20px', borderBottom: '1px solid #f5f5f5', padding: '4px 0' }}>
+              <Tag color={{ open: 'green', message: 'blue', data: 'purple', event: 'cyan', error: 'red', close: 'orange', timeout: 'gold', info: 'default' }[log.type]} style={{ fontSize: 11 }}>
+                {log.type}
+              </Tag>
+              <span style={{ color: '#999', marginRight: 8 }}>{log.time}</span>
+              {log.text}
+            </div>
+          ))
+        )}
         <div ref={logEndRef} />
       </Card>
     </Space>
@@ -332,8 +353,8 @@ render(<SseExample />);
 - _AxiosFetch(@kne/current-lib_axios-fetch)[import * as _AxiosFetch from "@kne/axios-fetch"],antd(antd)
 
 ```jsx
-const { default: createAjax, buildUrlWithParams, parseUrlParams } = _AxiosFetch;
-const { Button, Card, Space, Input, Select, message, Table } = antd;
+const { buildUrlWithParams, parseUrlParams } = _AxiosFetch;
+const { Button, Card, Space, Input, message } = antd;
 const { useState } = React;
 
 const UtilsExample = () => {
@@ -364,18 +385,15 @@ const UtilsExample = () => {
     message.success('替换完成');
   };
 
-  const ajax = createAjax({
-    baseURL: 'https://api.example.com',
-    getDefaultHeaders: () => ({ Authorization: 'Bearer my-token', 'X-App-Id': 'demo-app' })
-  });
-
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Card title="buildUrlWithParams" size="small">
         <Space direction="vertical" style={{ width: '100%' }}>
           <Input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="基础 URL" />
           <Input value={paramsInput} onChange={e => setParamsInput(e.target.value)} placeholder="参数 (key=value&key2=value2)" />
-          <Button type="primary" onClick={handleBuildUrl}>构建 URL</Button>
+          <Button type="primary" onClick={handleBuildUrl}>
+            构建 URL
+          </Button>
           {builtUrl && <div style={{ padding: 8, background: '#f5f5f5', borderRadius: 4, wordBreak: 'break-all', fontSize: 13 }}>{builtUrl}</div>}
         </Space>
       </Card>
@@ -383,7 +401,9 @@ const UtilsExample = () => {
         <Space direction="vertical" style={{ width: '100%' }}>
           <Input value={urlTemplate} onChange={e => setUrlTemplate(e.target.value)} placeholder="URL 模板，使用 {paramName}" />
           <div style={{ fontSize: 12, color: '#666' }}>urlParams: {&#96;{ userId: '1', postId: '42' }&#96;}</div>
-          <Button type="primary" onClick={handleParseUrl}>替换参数</Button>
+          <Button type="primary" onClick={handleParseUrl}>
+            替换参数
+          </Button>
           {resolvedUrl && <div style={{ padding: 8, background: '#f5f5f5', borderRadius: 4, fontSize: 13 }}>{resolvedUrl}</div>}
         </Space>
       </Card>
@@ -406,7 +426,7 @@ const { useState, useRef, useCallback } = React;
 
 const CacheExample = () => {
   const [cacheEnabled, setCacheEnabled] = useState(true);
-  const [cacheKey, setCacheKey] = useState('users');
+  const [cacheName, setCacheName] = useState('posts-detail');
   const [cacheTtl, setCacheTtl] = useState(10);
   const [requestCount, setRequestCount] = useState(0);
   const [cacheHitCount, setCacheHitCount] = useState(0);
@@ -428,8 +448,8 @@ const CacheExample = () => {
     setRequestCount(prev => prev + 1);
     const p = ajax({
       url: '/posts/1',
-      cache: cacheEnabled ? cacheKey : false,
-      cacheOptions: { ttl: cacheTtl * 1000 }
+      cache: cacheEnabled,
+      cacheOptions: { ttl: cacheTtl * 1000, cacheName }
     });
     setLastFromCache(p._fromCache);
     if (p._fromCache) {
@@ -447,9 +467,9 @@ const CacheExample = () => {
     setRequestCount(prev => prev + 1);
     const p = ajax({
       url: '/posts/1',
-      cache: cacheKey,
+      cache: true,
       force: true,
-      cacheOptions: { ttl: cacheTtl * 1000 }
+      cacheOptions: { ttl: cacheTtl * 1000, cacheName }
     });
     setLastFromCache(p._fromCache);
     p.then(({ data }) => {
@@ -458,22 +478,33 @@ const CacheExample = () => {
     });
   };
 
+  const handleClearByName = () => {
+    getAjax().delCacheByName(cacheName);
+    message.success(&#96;已清除分组缓存: ${cacheName}&#96;);
+    setLastFromCache(null);
+  };
+
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Card title="请求缓存" size="small">
-        <Alert type="info" showIcon message="启用 cache 后，相同参数的请求在 TTL 内会直接返回缓存，不会重复发送网络请求。设置 force: true 可强制刷新。" style={{ marginBottom: 12 }} />
+        <Alert type="info" showIcon message="启用 cache 后，相同参数的请求在 TTL 内会直接返回缓存，不会重复发送网络请求。cacheOptions.cacheName 用于分组失效，force: true 可强制刷新。" style={{ marginBottom: 12 }} />
         <Space wrap>
           <span>缓存:</span>
           <Switch checked={cacheEnabled} onChange={setCacheEnabled} checkedChildren="开" unCheckedChildren="关" />
-          <span>Cache Key:</span>
-          <Input value={cacheKey} onChange={e => setCacheKey(e.target.value)} style={{ width: 120 }} size="small" />
+          <span>Cache Name:</span>
+          <Input value={cacheName} onChange={e => setCacheName(e.target.value)} style={{ width: 140 }} size="small" />
           <span>TTL(秒):</span>
           <Input value={cacheTtl} onChange={e => setCacheTtl(Number(e.target.value))} style={{ width: 80 }} size="small" type="number" />
         </Space>
         <div style={{ marginTop: 12 }}>
           <Space>
-            <Button type="primary" onClick={handleRequest}>发送请求</Button>
-            <Button type="dashed" onClick={handleForceRequest}>强制刷新 (force)</Button>
+            <Button type="primary" onClick={handleRequest}>
+              发送请求
+            </Button>
+            <Button type="dashed" onClick={handleForceRequest}>
+              强制刷新 (force)
+            </Button>
+            <Button onClick={handleClearByName}>清除分组缓存</Button>
             <Tag>请求次数: {requestCount}</Tag>
             <Tag color="green">缓存命中: {cacheHitCount}</Tag>
             <Tag color={lastFromCache === null ? 'default' : lastFromCache ? 'green' : 'orange'}>{lastFromCache === null ? '未请求' : lastFromCache ? '命中缓存' : '未命中缓存'}</Tag>
@@ -494,39 +525,43 @@ render(<CacheExample />);
 
 ```jsx
 const { default: createAjax } = _AxiosFetch;
-const { Button, Card, Space, Input, Switch, message } = antd;
-const { useState, useRef, useCallback } = React;
+const { Button, Card, Space, Input, message } = antd;
+const { useState, useRef } = React;
 
 const PostFormExample = () => {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const lastResultRef = useRef(null);
 
-  const ajax = useRef(createAjax({
-    baseURL: 'https://jsonplaceholder.typicode.com',
-    errorHandler: msg => message.error(msg)
-  })).current;
+  const ajax = useRef(
+    createAjax({
+      baseURL: 'https://jsonplaceholder.typicode.com',
+      errorHandler: msg => message.error(msg)
+    })
+  ).current;
 
   const handleSubmit = () => {
-    ajax.postForm({
-      url: '/posts',
-      data: { title, body, userId: 1 }
-    }).then(({ data }) => {
-      lastResultRef.current = data;
-      message.success(&#96;提交成功, ID: ${data.id}&#96;);
-      console.log('postForm 响应:', data);
-    });
+    ajax
+      .postForm({
+        url: '/posts',
+        data: { title, body, userId: 1 }
+      })
+      .then(({ data }) => {
+        message.success(&#96;提交成功, ID: ${data.id}&#96;);
+        console.log('postForm 响应:', data);
+      });
   };
 
   const handleSubmitWithParams = () => {
-    ajax.postForm({
-      url: '/posts',
-      params: { verbose: 'true', source: 'form' },
-      data: { title, body, userId: 1 }
-    }).then(({ data }) => {
-      message.success(&#96;带参数提交成功, ID: ${data.id}&#96;);
-      console.log('postForm 带查询参数:', data);
-    });
+    ajax
+      .postForm({
+        url: '/posts',
+        params: { verbose: 'true', source: 'form' },
+        data: { title, body, userId: 1 }
+      })
+      .then(({ data }) => {
+        message.success(&#96;带参数提交成功, ID: ${data.id}&#96;);
+        console.log('postForm 带查询参数:', data);
+      });
   };
 
   return (
@@ -536,7 +571,9 @@ const PostFormExample = () => {
           <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="标题" />
           <Input value={body} onChange={e => setBody(e.target.value)} placeholder="内容" />
           <Space>
-            <Button type="primary" onClick={handleSubmit}>提交表单</Button>
+            <Button type="primary" onClick={handleSubmit}>
+              提交表单
+            </Button>
             <Button onClick={handleSubmitWithParams}>带查询参数提交</Button>
           </Space>
         </Space>
@@ -744,7 +781,7 @@ const AiChatExample = () => {
   const accumulatedRef = useRef('');
 
   const handleSubmit = useCallback(
-    msg => {
+    async msg => {
       const content = msg || inputValue;
       if (!content.trim() || loading) return;
 
@@ -761,7 +798,7 @@ const AiChatExample = () => {
       const MockES = createMockEventSource(replyText);
 
       // 使用 ajax.sse 接入流式输出
-      const client = ajax.sse({
+      const client = await ajax.sse({
         url: '/ai-chat',
         params: { prompt: content },
         EventSource: MockES,
@@ -778,6 +815,12 @@ const AiChatExample = () => {
           accumulatedRef.current = '';
         }
       });
+
+      if (!client) {
+        setLoading(false);
+        setStreamingText('');
+        return;
+      }
 
       sseRef.current = client;
 
@@ -809,7 +852,7 @@ const AiChatExample = () => {
     setStreamingText('');
     accumulatedRef.current = '';
     setLoading(false);
-  }, [streamingText]);
+  }, []);
 
   // 构建气泡列表数据
   const bubbleItems = messages
@@ -870,21 +913,23 @@ render(<AiChatExample />);
 
 #### 参数
 
-| 属性 | 类型 | 默认值 | 描述 |
-|------|------|-------|------|
-| baseURL | String | `''` | API 的基础 URL |
-| errorHandler | Function | `() => {}` | 全局错误处理函数，接收错误信息字符串 |
-| registerInterceptors | Function | `() => {}` | 注册拦截器的函数，接收 `interceptors` 对象 |
-| getDefaultHeaders | Function | `() => ({})` | 获取默认请求头的函数，返回对象 |
-| defaultError | String | `'请求发生错误'` | 默认错误信息 |
-| showResponseError | Function | 见下方 | 判断是否显示响应错误的函数，接收 response，返回 boolean |
-| getResponseError | Function | 见下方 | 获取响应错误信息的函数，接收 response，返回 string |
-| validateStatus | Function | `() => true` | axios 状态码校验 |
-| cache | Object | 见下方 | 缓存配置，传给 Cache 实例 |
+| 属性                 | 类型     | 默认值           | 描述                                                    |
+| -------------------- | -------- | ---------------- | ------------------------------------------------------- |
+| baseURL / baseUrl    | String   | `''`             | API 的基础 URL，兼容两种写法                            |
+| errorHandler         | Function | `() => {}`       | 全局错误处理函数，接收错误信息字符串                    |
+| registerInterceptors | Function | `() => {}`       | 注册拦截器的函数，接收 `interceptors` 对象              |
+| getDefaultHeaders    | Function | `() => ({})`     | 获取默认请求头的函数，返回对象                          |
+| defaultError         | String   | `'请求发生错误'` | 默认错误信息                                            |
+| showResponseError    | Function | 见下方           | 判断是否显示响应错误的函数，接收 response，返回 boolean |
+| getResponseError     | Function | 见下方           | 获取响应错误信息的函数，接收 response，返回 string      |
+| validateStatus       | Function | `() => true`     | axios 状态码校验                                        |
+| cache                | Object   | 见下方           | 缓存配置，传给 Cache 实例                               |
 
 `showResponseError` 默认逻辑：当 `config.showError === false` 时不显示；非 2xx 状态码或 `data.code !== 0` 时显示。
 
 `getResponseError` 默认逻辑：依次尝试 `data.msg`、`data.error_msg.detail`、`data.error_msg`。
+
+`cache` 支持 `{ ttl, maxLength, isLocal, localName, onError }`。当 `isLocal` 或 `localName` 开启时，未在单次请求里显式设置 `cacheOptions.isLocal` 的缓存也会默认持久化到 `localStorage`。
 
 #### 返回值
 
@@ -894,75 +939,82 @@ render(<AiChatExample />);
 
 发送请求的主函数。
 
-| 属性 | 类型 | 默认值 | 描述 |
-|------|------|-------|------|
-| url | String | - | 请求 URL |
-| method | String | `'GET'` | 请求方法 |
-| data | Object | - | 请求数据 |
-| params | Object | - | URL 查询参数 |
-| urlParams | Object | - | URL 路径参数替换 |
-| loader | Function | - | 数据加载函数，替代真实请求 |
-| cache | Boolean/String | `false` | 缓存标识，true 使用默认 key，字符串作为 cacheName |
-| cacheOptions | Object | `{}` | 缓存选项 `{ ttl, isLocal, cacheName }` |
-| force | Boolean | `false` | 强制刷新缓存 |
-| showError | Boolean | `true` | 设为 false 时静默本次请求错误 |
+| 属性         | 类型           | 默认值  | 描述                                                                  |
+| ------------ | -------------- | ------- | --------------------------------------------------------------------- |
+| url          | String         | -       | 请求 URL                                                              |
+| method       | String         | `'GET'` | 请求方法                                                              |
+| data         | Object         | -       | 请求数据                                                              |
+| params       | Object         | -       | URL 查询参数                                                          |
+| urlParams    | Object         | -       | URL 路径参数替换                                                      |
+| loader       | Function       | -       | 数据加载函数，替代真实请求                                            |
+| cache        | Boolean/String | `false` | 缓存开关或缓存 key 前缀，字符串会参与最终缓存 key                     |
+| cacheOptions | Object         | `{}`    | 缓存选项 `{ ttl, isLocal, cacheName }`，其中 `cacheName` 用于分组失效 |
+| force        | Boolean        | `false` | 强制刷新缓存                                                          |
+| showError    | Boolean        | `true`  | 设为 false 时静默本次请求错误                                         |
 
 ### ajax.postForm(config)
 
 发送表单数据。
 
-| 属性 | 类型 | 默认值 | 描述 |
-|------|------|-------|------|
-| url | String | - | 请求 URL |
-| data | Object | - | 表单数据 |
-| params | Object | - | URL 查询参数 |
-| urlParams | Object | - | URL 路径参数替换 |
+| 属性      | 类型   | 默认值 | 描述             |
+| --------- | ------ | ------ | ---------------- |
+| url       | String | -      | 请求 URL         |
+| data      | Object | -      | 表单数据         |
+| params    | Object | -      | URL 查询参数     |
+| urlParams | Object | -      | URL 路径参数替换 |
 
 ### ajax.sse(config)
 
-建立 SSE（Server-Sent Events）连接。
+建立 SSE（Server-Sent Events）连接。该方法为异步函数，会在 request interceptors 执行完成并创建 EventSource 后返回 client。
 
-| 属性 | 类型 | 默认值 | 描述 |
-|------|------|-------|------|
-| url | String | - | 请求 URL（支持绝对路径和相对路径） |
-| params | Object | - | 追加到 URL 的查询参数 |
-| headersToParams | Function | - | 自定义 headers 转 params 的函数，接收 getDefaultHeaders() 返回值，默认直接作为参数 |
-| onMessage | Function | - | 收到默认 message 事件的回调 `(parsed, rawEvent) => {}` |
-| onData | Function | - | 数据合并更新后的回调 `(mergedData, rawEvent) => {}` |
-| onOpen | Function | - | 连接建立的回调 `(event) => {}` |
-| onError | Function | - | 连接错误的回调 `(event) => {}` |
-| events | Object | - | 命名事件监听 `{ eventName: (parsed, rawEvent) => {} }` |
-| mergeData | Function | 默认浅合并 | 自定义数据合并函数 `(prev, next) => merged` |
+| 属性            | 类型     | 默认值               | 描述                                                                                              |
+| --------------- | -------- | -------------------- | ------------------------------------------------------------------------------------------------- |
+| url             | String   | -                    | 请求 URL（支持绝对路径和相对路径）                                                                |
+| params          | Object   | -                    | 追加到 URL 的查询参数                                                                             |
+| headersToParams | Function | -                    | 自定义 headers 转 params 的函数，接收 request interceptors 处理后的最终 headers，默认直接作为参数 |
+| onMessage       | Function | -                    | 收到默认 message 事件的回调 `(parsed, rawEvent) => {}`                                            |
+| onData          | Function | -                    | 默认 message 事件数据合并更新后的回调 `(mergedData, rawEvent) => {}`                              |
+| onOpen          | Function | -                    | 连接建立的回调 `(event) => {}`                                                                    |
+| onError         | Function | -                    | 连接错误的回调 `(event) => {}`                                                                    |
+| events          | Object   | -                    | 命名事件监听 `{ eventName: (parsed, rawEvent) => {} }`                                            |
+| mergeData       | Function | 默认浅合并           | 自定义数据合并函数 `(prev, next) => merged`                                                       |
+| EventSource     | Function | `window.EventSource` | 自定义 EventSource 实现，常用于测试或 Mock                                                        |
+| ...options      | Object   | -                    | 透传给 EventSource 构造函数的配置，如 `{ withCredentials: true }`                                 |
 
-**SSE 返回值**：`{ data, isConnected, lastUpdatedAt, eventSource, close }`
+**SSE 返回值**：`Promise<{ data, isConnected, lastUpdatedAt, eventSource, close } | null>`
 
-| 属性 | 类型 | 描述 |
-|------|------|------|
-| data | any (getter) | 累计合并后的数据 |
-| isConnected | boolean (getter) | 当前连接状态 |
-| lastUpdatedAt | number (getter) | 最后更新时间戳 |
-| eventSource | EventSource | 原始 EventSource 实例 |
-| close | Function | 关闭连接 |
+| 属性          | 类型             | 描述                  |
+| ------------- | ---------------- | --------------------- |
+| data          | any (getter)     | 累计合并后的数据      |
+| isConnected   | boolean (getter) | 当前连接状态          |
+| lastUpdatedAt | number (getter)  | 最后更新时间戳        |
+| eventSource   | EventSource      | 原始 EventSource 实例 |
+| close         | Function         | 关闭连接              |
 
 **SSE 特性**：
-- 自动将 `getDefaultHeaders()` 返回值作为 URL 查询参数
+
+- 建连前会执行 request interceptors，再将最终 headers 转为 URL 查询参数
 - 收到 `timeout` 命名事件时自动关闭并重新连接
 - 手动调用 `close()` 后不再重连
 - 非 `CLOSED` 状态的 `onerror` 不会触发 `errorHandler`（浏览器正在自动重连）
 - 非浏览器环境或无 `EventSource` 时返回 `null`
+- 浏览器原生 EventSource 不支持直接设置请求头，本方法通过 query params 透传认证信息，敏感 token 建议使用短期有效值或通过 `headersToParams` 做最小化转换
 
 ### 静态导出
 
-| 导出 | 描述 |
-|------|------|
-| parseUrlParams(params) | URL 路径参数替换函数，将 `{paramName}` 替换为 urlParams 对应值 |
-| buildUrlWithParams(url, params) | 构建带查询参数的 URL，自动处理 `?`/`&` 连接符，过滤空值 |
+| 导出                            | 描述                                                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| parseUrlParams(params)          | URL 路径参数替换函数，将 `{paramName}` 替换为 urlParams 对应值，会修改传入对象并对替换值进行 URL 编码 |
+| buildUrlWithParams(url, params) | 构建带查询参数的 URL，自动处理 `?`/`&` 连接符，过滤空值                                               |
 
 ### ajax 属性
 
-| 属性 | 类型 | 描述 |
-|------|------|------|
-| ajax.baseURL / ajax.baseUrl | String | 基础 URL |
-| ajax.parseUrlParams | Function | URL 参数解析函数 |
-| ajax.getDefaultHeaders | Function | 获取默认请求头函数 |
-| ajax.buildUrlWithParams | Function | URL 参数构建函数 |
+| 属性                        | 类型     | 描述                                     |
+| --------------------------- | -------- | ---------------------------------------- |
+| ajax.baseURL / ajax.baseUrl | String   | 基础 URL                                 |
+| ajax.parseUrlParams         | Function | URL 参数解析函数                         |
+| ajax.getDefaultHeaders      | Function | 获取默认请求头函数                       |
+| ajax.buildUrlWithParams     | Function | URL 参数构建函数                         |
+| ajax.cleanCache             | Function | 清空当前 ajax 实例的缓存                 |
+| ajax.delCache               | Function | 删除指定内部缓存 key                     |
+| ajax.delCacheByName         | Function | 按 `cacheOptions.cacheName` 删除分组缓存 |
