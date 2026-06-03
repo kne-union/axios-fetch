@@ -1,2 +1,0 @@
-"use strict";(self.webpackChunk_axios_fetch_1_2_0=self.webpackChunk_axios_fetch_1_2_0||[]).push([[6543],{48924(s,a,e){e.r(a),e.d(a,{default:()=>c});const c=e(23462).A},23462(s,a,e){function c(s){s.languages.csv={value:/[^\r\n,"]+|"(?:[^"]|"")*"(?!")/,punctuation:/,/}}e.d(a,{A:()=>c}),c.displayName="csv",c.aliases=[]}}]);
-//# sourceMappingURL=6543.f5bcf516.chunk.js.map

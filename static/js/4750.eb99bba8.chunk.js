@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunk_axios_fetch_1_2_1=self.webpackChunk_axios_fetch_1_2_1||[]).push([[4750],{14750(_,e,s){s.r(e),s.d(e,{default:()=>c});const c=s(46372).A}}]);
+//# sourceMappingURL=4750.eb99bba8.chunk.js.map
