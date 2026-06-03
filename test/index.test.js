@@ -85,6 +85,7 @@ describe('@kne/axios-fetch', () => {
         this.options = options;
         this.readyState = MockEventSource.OPEN;
         this.listeners = {};
+        this.closeCount = 0;
         instances.push(this);
       }
 
@@ -99,6 +100,7 @@ describe('@kne/axios-fetch', () => {
 
       close() {
         this.readyState = MockEventSource.CLOSED;
+        this.closeCount += 1;
       }
     }
 
@@ -144,5 +146,52 @@ describe('@kne/axios-fetch', () => {
 
     client.close();
     expect(client.isConnected).toBe(false);
+  });
+
+  test('closes SSE clients when server closes the connection', async () => {
+    const errors = [];
+
+    class MockEventSource {
+      static OPEN = 1;
+      static CLOSED = 2;
+
+      constructor(url) {
+        this.url = url;
+        this.readyState = MockEventSource.OPEN;
+        this.listeners = {};
+        this.closeCount = 0;
+      }
+
+      addEventListener(name, handler) {
+        this.listeners[name] = this.listeners[name] || [];
+        this.listeners[name].push(handler);
+      }
+
+      close() {
+        this.readyState = MockEventSource.CLOSED;
+        this.closeCount += 1;
+      }
+    }
+
+    const ajax = createAjax({
+      baseURL: 'https://api.example.com',
+      errorHandler: error => errors.push(error)
+    });
+
+    const client = await ajax.sse({
+      url: '/stream',
+      EventSource: MockEventSource
+    });
+
+    expect(client).toBeTruthy();
+    client.eventSource.onopen({});
+    expect(client.isConnected).toBe(true);
+
+    client.eventSource.readyState = MockEventSource.CLOSED;
+    client.eventSource.onerror({ message: 'server closed' });
+
+    expect(client.isConnected).toBe(false);
+    expect(client.eventSource.closeCount).toBe(1);
+    expect(errors).toEqual(['server closed']);
   });
 });
