@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_axios_fetch_1_2_4=self.webpackChunk_axios_fetch_1_2_4||[]).push([[8263],{38263(e,_,c){c.d(_,{createArchitectureServices:()=>s.S});var s=c(10048);c(8013)}}]);

@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunk_axios_fetch_1_2_4=self.webpackChunk_axios_fetch_1_2_4||[]).push([[1595],{31595(e,a,t){const n=t(1905).A;t.d(a,["default",0,n])},1905(e,a,t){function n(e){e.languages.brainfuck={pointer:{pattern:/<|>/,alias:"keyword"},increment:{pattern:/\+/,alias:"inserted"},decrement:{pattern:/-/,alias:"deleted"},branching:{pattern:/\[|\]/,alias:"important"},operator:/[.,]/,comment:/\S+/}}t.d(a,{A:()=>n}),n.displayName="brainfuck",n.aliases=[]}}]);
+//# sourceMappingURL=1595.06797bfe.chunk.js.map

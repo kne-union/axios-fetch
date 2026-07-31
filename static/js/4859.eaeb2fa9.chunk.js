@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunk_axios_fetch_1_2_4=self.webpackChunk_axios_fetch_1_2_4||[]).push([[4859],{60888(e,t,s){const a=s(46650).A;s.d(t,["default",0,a])},46650(e,t,s){function a(e){e.languages.git={comment:/^#.*/m,deleted:/^[-\u2013].*/m,inserted:/^\+.*/m,string:/("|')(?:\\.|(?!\1)[^\\\r\n])*\1/,command:{pattern:/^.*\$ git .*$/m,inside:{parameter:/\s--?\w+/}},coord:/^@@.*@@$/m,"commit-sha1":/^commit \w{40}$/m}}s.d(t,{A:()=>a}),a.displayName="git",a.aliases=[]}}]);
+//# sourceMappingURL=4859.eaeb2fa9.chunk.js.map

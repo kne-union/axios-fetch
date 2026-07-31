@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_axios_fetch_1_2_4=self.webpackChunk_axios_fetch_1_2_4||[]).push([[525],{50525(e,_,s){s.d(_,{createPieServices:()=>c.f});var c=s(77806);s(8013)}}]);

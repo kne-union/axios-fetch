@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunk_axios_fetch_1_2_4=self.webpackChunk_axios_fetch_1_2_4||[]).push([[2729],{32729(a,e,t){const p=t(91743).A;t.d(e,["default",0,p])},91743(a,e,t){function p(a){a.languages.hpkp={directive:{pattern:/\b(?:includeSubDomains|max-age|pin-sha256|preload|report-to|report-uri|strict)(?=[\s;=]|$)/i,alias:"property"},operator:/=/,punctuation:/;/}}t.d(e,{A:()=>p}),p.displayName="hpkp",p.aliases=[]}}]);
+//# sourceMappingURL=2729.8d106cff.chunk.js.map

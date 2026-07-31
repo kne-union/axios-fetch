@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunk_axios_fetch_1_2_4=self.webpackChunk_axios_fetch_1_2_4||[]).push([[3010],{93010(a,e,s){const t=s(95692).A;s.d(e,["default",0,t])},95692(a,e,s){function t(a){a.languages.hsts={directive:{pattern:/\b(?:includeSubDomains|max-age|preload)(?=[\s;=]|$)/i,alias:"property"},operator:/=/,punctuation:/;/}}s.d(e,{A:()=>t}),t.displayName="hsts",t.aliases=[]}}]);
+//# sourceMappingURL=3010.63e65d38.chunk.js.map
