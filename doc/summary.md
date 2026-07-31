@@ -39,7 +39,7 @@
    - 支持缓存分组和强制刷新
 
 8. **SSE 实时推送**
-   - 基于 EventSource 的 SSE 客户端
+   - 基于 EventSource / FetchEventSource 的 SSE 客户端（支持 POST、自定义 headers、请求体）
    - 自动将认证信息转为 URL 参数
    - 支持 timeout 事件自动重连
    - 内置数据增量合并

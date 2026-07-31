@@ -61,15 +61,18 @@
 | 属性            | 类型     | 默认值               | 描述                                                                                              |
 | --------------- | -------- | -------------------- | ------------------------------------------------------------------------------------------------- |
 | url             | String   | -                    | 请求 URL（支持绝对路径和相对路径）                                                                |
+| method          | String   | `'get'` / fetchSse 时默认 `'post'` | 请求方法                                                                 |
+| data / body     | any      | -                    | 请求体（配合 `fetchSse: true` 使用）                                                      |
 | params          | Object   | -                    | 追加到 URL 的查询参数                                                                             |
-| headersToParams | Function | -                    | 自定义 headers 转 params 的函数，接收 request interceptors 处理后的最终 headers，默认直接作为参数 |
+| headersToParams | Function | -                    | 自定义 headers 转 params；`fetchSse: true` 时默认不把 headers 拼进 query                         |
 | onMessage       | Function | -                    | 收到默认 message 事件的回调 `(parsed, rawEvent) => {}`                                            |
 | onData          | Function | -                    | 默认 message 事件数据合并更新后的回调 `(mergedData, rawEvent) => {}`                              |
 | onOpen          | Function | -                    | 连接建立的回调 `(event) => {}`                                                                    |
 | onError         | Function | -                    | 连接错误的回调 `(event) => {}`                                                                    |
 | events          | Object   | -                    | 命名事件监听 `{ eventName: (parsed, rawEvent) => {} }`                                            |
 | mergeData       | Function | 默认浅合并           | 自定义数据合并函数 `(prev, next) => merged`                                                       |
-| EventSource     | Function | `window.EventSource` | 自定义 EventSource 实现，常用于测试或 Mock                                                        |
+| fetchSse        | Boolean  | `false`              | 为 `true` 时使用内置 `FetchEventSource`（fetch 模拟 SSE，支持 POST / headers / body）             |
+| EventSource     | Function | 见下方               | 自定义实现；未传时：`fetchSse: true` → `FetchEventSource`，否则 → `window.EventSource`            |
 | ...options      | Object   | -                    | 透传给 EventSource 构造函数的配置，如 `{ withCredentials: true }`                                 |
 
 **SSE 返回值**：`Promise<{ data, isConnected, lastUpdatedAt, eventSource, close } | null>`
@@ -84,12 +87,13 @@
 
 **SSE 特性**：
 
-- 建连前会执行 request interceptors，再将最终 headers 转为 URL 查询参数
+- 建连前会执行 request interceptors
+- 默认使用浏览器原生 `EventSource`（GET）；headers 默认转为 URL 查询参数（可用 `headersToParams` 控制）
+- 传入 `fetchSse: true` 时改用内置 `FetchEventSource`（fetch 读流），支持 POST、请求体与 Authorization 等请求头
 - 收到 `timeout` 命名事件时自动关闭并重新连接
 - 手动调用 `close()` 后不再重连
 - 非 `CLOSED` 状态的 `onerror` 不会触发 `errorHandler`（浏览器正在自动重连）
-- 非浏览器环境或无 `EventSource` 时返回 `null`
-- 浏览器原生 EventSource 不支持直接设置请求头，本方法通过 query params 透传认证信息，敏感 token 建议使用短期有效值或通过 `headersToParams` 做最小化转换
+- 无可用 EventSource 实现时返回 `null`
 
 ### 静态导出
 
@@ -97,6 +101,9 @@
 | ------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | parseUrlParams(params)          | URL 路径参数替换函数，将 `{paramName}` 替换为 urlParams 对应值，会修改传入对象并对替换值进行 URL 编码 |
 | buildUrlWithParams(url, params) | 构建带查询参数的 URL，自动处理 `?`/`&` 连接符，过滤空值                                               |
+| FetchEventSource                | 基于 fetch 的 EventSource 兼容实现，支持 POST / headers / body                                        |
+| isFetchSseEnabled(options)      | 判断是否开启了 `fetchSse: true`                                                                       |
+| normalizeHeaders(headers)       | 规范化 axios headers 对象                                                                             |
 
 ### ajax 属性
 

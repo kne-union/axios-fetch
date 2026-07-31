@@ -1,3 +1,5 @@
+import FetchEventSource, { isFetchSseEnabled } from './FetchEventSource';
+
 export const normalizeHeaders = headers => {
   if (!headers) return {};
   if (typeof headers.toJSON === 'function') return headers.toJSON();
@@ -12,9 +14,9 @@ const applyRequestInterceptors = (instance, config) => {
     .reduce((promise, handler) => promise.then(handler.fulfilled, handler.rejected), Promise.resolve(config));
 };
 
-const getTargetUrl = ({ instance, buildUrlWithParams }, config) => {
+const getTargetUrl = ({ instance, buildUrlWithParams }, config, { passHeadersToQuery }) => {
   const headers = normalizeHeaders(config.headers);
-  const headerParams = typeof config.headersToParams === 'function' ? config.headersToParams(headers) : headers;
+  const headerParams = passHeadersToQuery ? (typeof config.headersToParams === 'function' ? config.headersToParams(headers) : headers) : typeof config.headersToParams === 'function' ? config.headersToParams(headers) : {};
   const { params, headersToParams, ...uriConfig } = config;
   return buildUrlWithParams(instance.getUri({ ...uriConfig, params: undefined }), { ...headerParams, ...params });
 };
@@ -32,6 +34,19 @@ const defaultMergeData = (prev, next) => {
     return Object.assign({}, prev, next);
   }
   return next;
+};
+
+const resolveEventSourceClass = (CustomEventSource, useFetchSse) => {
+  if (typeof CustomEventSource === 'function') {
+    return CustomEventSource;
+  }
+  if (useFetchSse) {
+    return FetchEventSource;
+  }
+  if (typeof window !== 'undefined' && typeof window.EventSource === 'function') {
+    return window.EventSource;
+  }
+  return null;
 };
 
 const createClient = ({ EventSourceClass, targetUrl, eventSourceOptions, handlers, errorHandler, defaultError }) => {
@@ -121,8 +136,9 @@ const createClient = ({ EventSourceClass, targetUrl, eventSourceOptions, handler
 };
 
 const createSse = ({ instance, baseURL, parseUrlParams, buildUrlWithParams, errorHandler, defaultError }) => {
-  return async ({ url, headersToParams, params, onMessage, onOpen, onError, onData, events, mergeData, EventSource: CustomEventSource, ...options }) => {
-    const EventSourceClass = CustomEventSource || (typeof window !== 'undefined' && window.EventSource);
+  return async ({ url, headersToParams, params, onMessage, onOpen, onError, onData, events, mergeData, EventSource: CustomEventSource, fetchSse = false, ...options }) => {
+    const useFetchSse = fetchSse === true || CustomEventSource === FetchEventSource;
+    const EventSourceClass = resolveEventSourceClass(CustomEventSource, useFetchSse);
     if (typeof EventSourceClass !== 'function') {
       return null;
     }
@@ -131,19 +147,36 @@ const createSse = ({ instance, baseURL, parseUrlParams, buildUrlWithParams, erro
       ...options,
       url,
       baseURL,
-      method: 'get',
+      method: options.method || (useFetchSse ? 'post' : 'get'),
       params,
-      headersToParams
+      headersToParams,
+      data: options.data,
+      headers: options.headers,
+      fetchSse: useFetchSse
     };
     parseUrlParams(requestConfig);
 
     try {
       const config = await applyRequestInterceptors(instance, requestConfig);
-      const targetUrl = getTargetUrl({ instance, buildUrlWithParams }, config);
+      const targetUrl = getTargetUrl({ instance, buildUrlWithParams }, config, {
+        // fetchSse：headers 走请求头；原生 EventSource：headers 默认转 query
+        passHeadersToQuery: !useFetchSse
+      });
+      const headers = normalizeHeaders(config.headers);
+      const eventSourceOptions = useFetchSse
+        ? {
+            ...options,
+            method: config.method || options.method || 'POST',
+            headers: Object.assign({}, headers, normalizeHeaders(options.headers)),
+            data: options.data !== undefined ? options.data : config.data,
+            body: options.body
+          }
+        : options;
+
       return createClient({
         EventSourceClass,
         targetUrl,
-        eventSourceOptions: options,
+        eventSourceOptions,
         handlers: { onMessage, onOpen, onError, onData, events, mergeData },
         errorHandler,
         defaultError
@@ -156,4 +189,5 @@ const createSse = ({ instance, baseURL, parseUrlParams, buildUrlWithParams, erro
   };
 };
 
+export { FetchEventSource, isFetchSseEnabled };
 export default createSse;
