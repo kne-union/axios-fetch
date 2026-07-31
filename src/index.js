@@ -1,8 +1,9 @@
 import axios from 'axios';
 import Cache from './Cache';
 import getRequestToken from './getRequestToken';
-import createSse, { normalizeHeaders } from './sse';
+import createSse, { normalizeHeaders, FetchEventSource, isFetchSseEnabled } from './sse';
 
+export { FetchEventSource, isFetchSseEnabled, normalizeHeaders };
 export const parseUrlParams = params => {
   if (!params || typeof params !== 'object') {
     return params;
